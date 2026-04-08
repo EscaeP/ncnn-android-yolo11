@@ -1,0 +1,4 @@
+#Tue Apr 07 18:11:46 CST 2026
+base.0=F\:\\graduationProject\\ncnn-android-yolo11\\app\\build\\intermediates\\dex\\release\\mergeDexRelease\\classes.dex
+path.0=classes.dex
+renamed.0=classes.dex

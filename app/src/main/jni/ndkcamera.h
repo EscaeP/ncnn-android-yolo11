@@ -42,6 +42,10 @@ public:
 public:
     int camera_facing;
     int camera_orientation;
+    float camera_fx;
+    float camera_fy;
+    float camera_cx;
+    float camera_cy;
 
 private:
     ACameraManager* camera_manager;

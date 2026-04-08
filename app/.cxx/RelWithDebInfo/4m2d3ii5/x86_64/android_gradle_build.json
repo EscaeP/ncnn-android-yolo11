@@ -1,0 +1,51 @@
+{
+  "buildFiles": [
+    "F:\\graduationProject\\ncnn-android-yolo11\\app\\src\\main\\jni\\CMakeLists.txt",
+    "F:\\graduationProject\\ncnn-android-yolo11\\app\\src\\main\\jni\\ncnn-20260113-android-vulkan\\x86_64\\lib\\cmake\\glslang\\glslang-config-version.cmake",
+    "F:\\graduationProject\\ncnn-android-yolo11\\app\\src\\main\\jni\\ncnn-20260113-android-vulkan\\x86_64\\lib\\cmake\\glslang\\glslang-config.cmake",
+    "F:\\graduationProject\\ncnn-android-yolo11\\app\\src\\main\\jni\\ncnn-20260113-android-vulkan\\x86_64\\lib\\cmake\\glslang\\glslang-targets-release.cmake",
+    "F:\\graduationProject\\ncnn-android-yolo11\\app\\src\\main\\jni\\ncnn-20260113-android-vulkan\\x86_64\\lib\\cmake\\glslang\\glslang-targets.cmake",
+    "F:\\graduationProject\\ncnn-android-yolo11\\app\\src\\main\\jni\\ncnn-20260113-android-vulkan\\x86_64\\lib\\cmake\\ncnn\\ncnn-release.cmake",
+    "F:\\graduationProject\\ncnn-android-yolo11\\app\\src\\main\\jni\\ncnn-20260113-android-vulkan\\x86_64\\lib\\cmake\\ncnn\\ncnn.cmake",
+    "F:\\graduationProject\\ncnn-android-yolo11\\app\\src\\main\\jni\\ncnn-20260113-android-vulkan\\x86_64\\lib\\cmake\\ncnn\\ncnnConfig.cmake",
+    "F:\\graduationProject\\ncnn-android-yolo11\\app\\src\\main\\jni\\ncnn-20260113-android-vulkan\\x86_64\\lib\\cmake\\ncnn\\ncnnConfigVersion.cmake",
+    "F:\\graduationProject\\ncnn-android-yolo11\\app\\src\\main\\jni\\opencv-mobile-4.13.0-android\\sdk\\native\\jni\\abi-x86_64\\OpenCVConfig.cmake",
+    "F:\\graduationProject\\ncnn-android-yolo11\\app\\src\\main\\jni\\opencv-mobile-4.13.0-android\\sdk\\native\\jni\\abi-x86_64\\OpenCVModules-release.cmake",
+    "F:\\graduationProject\\ncnn-android-yolo11\\app\\src\\main\\jni\\opencv-mobile-4.13.0-android\\sdk\\native\\jni\\abi-x86_64\\OpenCVModules.cmake",
+    "F:\\graduationProject\\ncnn-android-yolo11\\app\\src\\main\\jni\\opencv-mobile-4.13.0-android\\sdk\\native\\jni\\OpenCVConfig-version.cmake",
+    "F:\\graduationProject\\ncnn-android-yolo11\\app\\src\\main\\jni\\opencv-mobile-4.13.0-android\\sdk\\native\\jni\\OpenCVConfig.cmake"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "E:\\Android SDK\\cmake\\3.31.5\\bin\\ninja.exe",
+      "-C",
+      "F:\\graduationProject\\ncnn-android-yolo11\\app\\.cxx\\RelWithDebInfo\\4m2d3ii5\\x86_64",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "E:\\Android SDK\\cmake\\3.31.5\\bin\\ninja.exe",
+    "-C",
+    "F:\\graduationProject\\ncnn-android-yolo11\\app\\.cxx\\RelWithDebInfo\\4m2d3ii5\\x86_64",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {
+    "yolo11ncnn::@6890427a1f51a3e7e1df": {
+      "toolchain": "toolchain",
+      "abi": "x86_64",
+      "artifactName": "yolo11ncnn",
+      "output": "F:\\graduationProject\\ncnn-android-yolo11\\app\\build\\intermediates\\cxx\\RelWithDebInfo\\4m2d3ii5\\obj\\x86_64\\libyolo11ncnn.so",
+      "runtimeFiles": []
+    }
+  },
+  "toolchains": {
+    "toolchain": {
+      "cCompilerExecutable": "E:\\Android SDK\\ndk\\29.0.14206865\\toolchains\\llvm\\prebuilt\\windows-x86_64\\bin\\clang.exe",
+      "cppCompilerExecutable": "E:\\Android SDK\\ndk\\29.0.14206865\\toolchains\\llvm\\prebuilt\\windows-x86_64\\bin\\clang++.exe"
+    }
+  },
+  "cFileExtensions": [],
+  "cppFileExtensions": [
+    "cpp"
+  ]
+}

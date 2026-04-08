@@ -28,6 +28,11 @@ android {
         }
     }
 
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
+
     dependencies {
         implementation 'com.android.support:support-v4:24.0.0'
     }

@@ -1,0 +1,19 @@
+<lint-module
+    format="1"
+    dir="F:\graduationProject\ncnn-android-yolo11\app"
+    name=":app"
+    type="APP"
+    maven="yolo11ncnn:app:unspecified"
+    agpVersion="8.7.3"
+    buildFolder="build"
+    bootClassPath="E:\Android SDK\platforms\android-33\android.jar;E:\Android SDK\build-tools\34.0.0\core-lambda-stubs.jar"
+    javaSourceLevel="21"
+    compileTarget="android-33"
+    neverShrinking="true">
+  <lintOptions
+      abortOnError="true"
+      absolutePaths="true"
+      checkReleaseBuilds="true"
+      explainIssues="true"/>
+  <variant name="release"/>
+</lint-module>

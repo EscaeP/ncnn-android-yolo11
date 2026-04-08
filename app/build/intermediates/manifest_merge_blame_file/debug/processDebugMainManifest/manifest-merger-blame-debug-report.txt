@@ -1,0 +1,53 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="com.tencent.yolo11ncnn"
+4    android:versionCode="1"
+5    android:versionName="1.1" >
+6
+7    <uses-sdk
+8        android:minSdkVersion="24"
+9        android:targetSdkVersion="35" />
+10
+11    <uses-permission android:name="android.permission.CAMERA" />
+11-->F:\graduationProject\ncnn-android-yolo11\app\src\main\AndroidManifest.xml:5:5-65
+11-->F:\graduationProject\ncnn-android-yolo11\app\src\main\AndroidManifest.xml:5:22-62
+12
+13    <uses-feature android:name="android.hardware.camera2.full" />
+13-->F:\graduationProject\ncnn-android-yolo11\app\src\main\AndroidManifest.xml:6:5-66
+13-->F:\graduationProject\ncnn-android-yolo11\app\src\main\AndroidManifest.xml:6:19-63
+14    <uses-feature
+14-->F:\graduationProject\ncnn-android-yolo11\app\src\main\AndroidManifest.xml:7:5-85
+15        android:name="android.hardware.camera"
+15-->F:\graduationProject\ncnn-android-yolo11\app\src\main\AndroidManifest.xml:7:19-57
+16        android:required="false" />
+16-->F:\graduationProject\ncnn-android-yolo11\app\src\main\AndroidManifest.xml:7:58-82
+17
+18    <application
+18-->F:\graduationProject\ncnn-android-yolo11\app\src\main\AndroidManifest.xml:9:5-16:19
+19        android:debuggable="true"
+20        android:extractNativeLibs="true"
+21        android:label="@string/app_name"
+21-->F:\graduationProject\ncnn-android-yolo11\app\src\main\AndroidManifest.xml:9:18-50
+22        android:testOnly="true" >
+23        <activity
+23-->F:\graduationProject\ncnn-android-yolo11\app\src\main\AndroidManifest.xml:10:9-15:20
+24            android:name="com.tencent.yolo11ncnn.MainActivity"
+24-->F:\graduationProject\ncnn-android-yolo11\app\src\main\AndroidManifest.xml:10:19-46
+25            android:exported="true"
+25-->F:\graduationProject\ncnn-android-yolo11\app\src\main\AndroidManifest.xml:10:80-103
+26            android:label="@string/app_name" >
+26-->F:\graduationProject\ncnn-android-yolo11\app\src\main\AndroidManifest.xml:10:47-79
+27            <intent-filter>
+27-->F:\graduationProject\ncnn-android-yolo11\app\src\main\AndroidManifest.xml:11:13-14:29
+28                <action android:name="android.intent.action.MAIN" />
+28-->F:\graduationProject\ncnn-android-yolo11\app\src\main\AndroidManifest.xml:12:17-69
+28-->F:\graduationProject\ncnn-android-yolo11\app\src\main\AndroidManifest.xml:12:25-66
+29
+30                <category android:name="android.intent.category.LAUNCHER" />
+30-->F:\graduationProject\ncnn-android-yolo11\app\src\main\AndroidManifest.xml:13:17-77
+30-->F:\graduationProject\ncnn-android-yolo11\app\src\main\AndroidManifest.xml:13:27-74
+31            </intent-filter>
+32        </activity>
+33    </application>
+34
+35</manifest>

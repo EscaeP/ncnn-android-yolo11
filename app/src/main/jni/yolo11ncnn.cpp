@@ -27,6 +27,7 @@
 #include <benchmark.h>
 
 #include "yolo11.h"
+#include "gdrnet.h"
 
 #include "ndkcamera.h"
 
@@ -111,7 +112,11 @@ static int draw_fps(cv::Mat& rgb)
 }
 
 static YOLO11* g_yolo11 = 0;
+static GDRNet* g_gdrnet = 0;
 static ncnn::Mutex lock;
+static bool g_paused = false;
+static cv::Mat g_last_frame;
+static std::vector<Object> g_last_objects;
 
 class MyNdkCamera : public NdkCameraWindow
 {
@@ -121,19 +126,101 @@ public:
 
 void MyNdkCamera::on_image_render(cv::Mat& rgb) const
 {
+    // 检查是否暂停
+    if (g_paused)
+    {
+        __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "System paused, displaying last frame");
+        // 显示最后一帧的追踪结果
+        if (!g_last_frame.empty())
+        {
+            rgb = g_last_frame.clone();
+        }
+        else
+        {
+            draw_unsupported(rgb);
+        }
+        return;
+    }
+
     // yolo11
     {
         ncnn::MutexLockGuard g(lock);
 
         if (g_yolo11)
         {
+            __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "Starting YOLO11 detection...");
             std::vector<Object> objects;
             g_yolo11->detect(rgb, objects);
+            __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "YOLO11 detected %d objects", (int)objects.size());
 
+            // GDR-Net processing
+            if (g_gdrnet && !objects.empty())
+            {
+                __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "GDR-Net is available, processing objects...");
+                // 使用固定的相机参数值
+                float current_fx = 417.58f;
+                float current_fy = 417.58f;
+                float current_cx = 200.0f;
+                float current_cy = 320.0f;
+                
+                g_gdrnet->setCameraParams(current_fx, current_fy, current_cx, current_cy);
+                __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "Set camera params - fx: %.2f, fy: %.2f, cx: %.2f, cy: %.2f", 
+                    current_fx, current_fy, current_cx, current_cy);
+                
+                int object_count = 0;
+                for (const Object& obj : objects)
+                {
+                    __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "Processing object %d: label=%d, rect=(%.0f,%.0f,%.0f,%.0f)", 
+                        object_count, obj.label, obj.rect.x, obj.rect.y, obj.rect.width, obj.rect.height);
+                    // 1. 裁剪ROI区域
+                    cv::Rect bbox = obj.rect;
+                    // 确保ROI在图像范围内
+                    bbox.x = std::max(0, bbox.x);
+                    bbox.y = std::max(0, bbox.y);
+                    bbox.width = std::min(rgb.cols - bbox.x, bbox.width);
+                    bbox.height = std::min(rgb.rows - bbox.y, bbox.height);
+
+                    if (bbox.width > 0 && bbox.height > 0)
+                    {
+                        __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "Valid ROI: (%d,%d,%d,%d)", 
+                            bbox.x, bbox.y, bbox.width, bbox.height);
+                        cv::Mat roi = rgb(bbox);
+                        
+                        // 2. 执行GDR-Net推理
+                        PoseResult result;
+                        __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "Running GDR-Net inference...");
+                        g_gdrnet->inference(roi, bbox, obj.label, result);
+
+                        // 绘制3维坐标轴表示6D姿态
+                        //__android_log_print(ANDROID_LOG_DEBUG, "ncnn", "Drawing 3D axes...");
+                        g_gdrnet->draw3DAxes(rgb, result, g_gdrnet->default_camera_params, bbox);
+                    }
+                    else
+                    {
+                        __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "Invalid ROI, skipping");
+                    }
+                    object_count++;
+                }
+            }
+            else if (!g_gdrnet)
+            {
+                __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "GDR-Net is not initialized");
+            }
+            else if (objects.empty())
+            {
+                __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "No objects detected, skipping GDR-Net processing");
+            }
+
+            __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "Drawing YOLO11 detections...");
             g_yolo11->draw(rgb, objects);
+
+            // 保存当前帧和检测结果（包含所有绘制的内容）
+            g_last_frame = rgb.clone();
+            g_last_objects = objects;
         }
         else
         {
+            __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "YOLO11 is not initialized");
             draw_unsupported(rgb);
         }
     }
@@ -165,6 +252,9 @@ JNIEXPORT void JNI_OnUnload(JavaVM* vm, void* reserved)
 
         delete g_yolo11;
         g_yolo11 = 0;
+        
+        delete g_gdrnet;
+        g_gdrnet = 0;
     }
 
     ncnn::destroy_gpu_instance();
@@ -176,7 +266,7 @@ JNIEXPORT void JNI_OnUnload(JavaVM* vm, void* reserved)
 // public native boolean loadModel(AssetManager mgr, int taskid, int modelid, int cpugpu);
 JNIEXPORT jboolean JNICALL Java_com_tencent_yolo11ncnn_YOLO11Ncnn_loadModel(JNIEnv* env, jobject thiz, jobject assetManager, jint taskid, jint modelid, jint cpugpu)
 {
-    if (taskid < 0 || taskid > 4 || modelid < 0 || modelid > 8 || cpugpu < 0 || cpugpu > 2)
+    if (taskid < 0 || taskid > 2 || modelid < 0 || modelid > 8 || cpugpu < 0 || cpugpu > 2)
     {
         return JNI_FALSE;
     }
@@ -185,12 +275,10 @@ JNIEXPORT jboolean JNICALL Java_com_tencent_yolo11ncnn_YOLO11Ncnn_loadModel(JNIE
 
     __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "loadModel %p", mgr);
 
-    const char* tasknames[5] =
+    const char* tasknames[3] =
     {
         "",
-        "_seg",
         "_pose",
-        "_cls",
         "_obb"
     };
 
@@ -244,12 +332,28 @@ JNIEXPORT jboolean JNICALL Java_com_tencent_yolo11ncnn_YOLO11Ncnn_loadModel(JNIE
             if (!g_yolo11)
             {
                 if (taskid == 0) g_yolo11 = new YOLO11_det;
-                if (taskid == 1) g_yolo11 = new YOLO11_seg;
-                if (taskid == 2) g_yolo11 = new YOLO11_pose;
-                if (taskid == 3) g_yolo11 = new YOLO11_cls;
-                if (taskid == 4) g_yolo11 = new YOLO11_obb;
+                if (taskid == 1) g_yolo11 = new YOLO11_pose;
+                if (taskid == 2) g_yolo11 = new YOLO11_obb;
 
                 g_yolo11->load(mgr, parampath.c_str(), modelpath.c_str(), use_gpu || use_turnip);
+            }
+            
+            // Load GDR-Net model
+            if (!g_gdrnet)
+            {
+                __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "Creating GDR-Net instance...");
+                g_gdrnet = new GDRNet;
+                __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "Loading GDR-Net model: model_sim.ncnn.param, model_sim.ncnn.bin");
+                int gdr_load_result = g_gdrnet->load(mgr, "model_sim.ncnn.param", "model_sim.ncnn.bin", use_gpu || use_turnip);
+                __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "GDR-Net load result: %d", gdr_load_result);
+                if (gdr_load_result != 0)
+                {
+                    __android_log_print(ANDROID_LOG_ERROR, "ncnn", "Failed to load GDR-Net model");
+                }
+                else
+                {
+                    __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "GDR-Net model loaded successfully!");
+                }
             }
             int target_size = 320;
             if ((int)modelid >= 3)
@@ -294,6 +398,17 @@ JNIEXPORT jboolean JNICALL Java_com_tencent_yolo11ncnn_YOLO11Ncnn_setOutputWindo
     __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "setOutputWindow %p", win);
 
     g_camera->set_window(win);
+
+    return JNI_TRUE;
+}
+
+// public native boolean togglePause();
+JNIEXPORT jboolean JNICALL Java_com_tencent_yolo11ncnn_YOLO11Ncnn_togglePause(JNIEnv* env, jobject thiz)
+{
+    __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "togglePause");
+
+    g_paused = !g_paused;
+    __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "Pause state: %s", g_paused ? "paused" : "resumed");
 
     return JNI_TRUE;
 }

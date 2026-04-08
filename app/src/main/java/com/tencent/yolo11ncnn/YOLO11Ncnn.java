@@ -23,6 +23,7 @@ public class YOLO11Ncnn
     public native boolean openCamera(int facing);
     public native boolean closeCamera();
     public native boolean setOutputWindow(Surface surface);
+    public native boolean togglePause();
 
     static {
         System.loadLibrary("yolo11ncnn");

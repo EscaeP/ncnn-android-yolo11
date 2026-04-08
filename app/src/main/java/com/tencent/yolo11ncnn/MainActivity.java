@@ -77,6 +77,14 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback
             }
         });
 
+        Button buttonPause = (Button) findViewById(R.id.buttonPause);
+        buttonPause.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View arg0) {
+                yolo11ncnn.togglePause();
+            }
+        });
+
         spinnerTask = (Spinner) findViewById(R.id.spinnerTask);
         spinnerTask.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override

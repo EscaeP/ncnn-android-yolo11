@@ -1,0 +1,9 @@
+ninja: Entering directory `F:\graduationProject\ncnn-android-yolo11\app\.cxx\Debug\496aj585\x86_64'
+[1/8] Building CXX object CMakeFiles/yolo11ncnn.dir/yolo11.cpp.o
+[2/8] Building CXX object CMakeFiles/yolo11ncnn.dir/ndkcamera.cpp.o
+[3/8] Building CXX object CMakeFiles/yolo11ncnn.dir/yolo11ncnn.cpp.o
+[4/8] Building CXX object CMakeFiles/yolo11ncnn.dir/gdrnet.cpp.o
+[5/8] Building CXX object CMakeFiles/yolo11ncnn.dir/yolo11_det.cpp.o
+[6/8] Building CXX object CMakeFiles/yolo11ncnn.dir/yolo11_pose.cpp.o
+[7/8] Building CXX object CMakeFiles/yolo11ncnn.dir/yolo11_obb.cpp.o
+[8/8] Linking CXX shared library F:\graduationProject\ncnn-android-yolo11\app\build\intermediates\cxx\Debug\496aj585\obj\x86_64\libyolo11ncnn.so

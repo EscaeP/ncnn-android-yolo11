@@ -61,21 +61,7 @@ public:
     virtual int draw(cv::Mat& rgb, const std::vector<Object>& objects);
 };
 
-class YOLO11_seg : public YOLO11
-{
-public:
-    virtual int detect(const cv::Mat& rgb, std::vector<Object>& objects);
-    virtual int draw(cv::Mat& rgb, const std::vector<Object>& objects);
-};
-
 class YOLO11_pose : public YOLO11
-{
-public:
-    virtual int detect(const cv::Mat& rgb, std::vector<Object>& objects);
-    virtual int draw(cv::Mat& rgb, const std::vector<Object>& objects);
-};
-
-class YOLO11_cls : public YOLO11
 {
 public:
     virtual int detect(const cv::Mat& rgb, std::vector<Object>& objects);

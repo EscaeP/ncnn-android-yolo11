@@ -166,6 +166,10 @@ NdkCamera::NdkCamera()
 {
     camera_facing = 0;
     camera_orientation = 0;
+    camera_fx = 640.0f;
+    camera_fy = 640.0f;
+    camera_cx = 320.0f;
+    camera_cy = 240.0f;
 
     camera_manager = 0;
     camera_device = 0;
@@ -263,6 +267,53 @@ int NdkCamera::open(int _camera_facing)
             }
 
             camera_orientation = orientation;
+
+            // 获取相机内参
+            { 
+                ACameraMetadata_const_entry e = { 0 };
+                float focal_length = 0.0f;
+                if (ACameraMetadata_getConstEntry(camera_metadata, ACAMERA_LENS_INFO_AVAILABLE_FOCAL_LENGTHS, &e) == ACAMERA_OK) {
+                    focal_length = e.data.f[0];
+                    __android_log_print(ANDROID_LOG_DEBUG, "NdkCamera", "Focal length: %.2f", focal_length);
+                }
+
+                // 获取传感器尺寸
+                float sensor_width = 0.0f;
+                float sensor_height = 0.0f;
+                if (ACameraMetadata_getConstEntry(camera_metadata, ACAMERA_SENSOR_INFO_PHYSICAL_SIZE, &e) == ACAMERA_OK) {
+                    sensor_width = e.data.f[0];
+                    sensor_height = e.data.f[1];
+                    __android_log_print(ANDROID_LOG_DEBUG, "NdkCamera", "Sensor size: %.2f x %.2f", sensor_width, sensor_height);
+                }
+
+                // 获取图像尺寸
+                int image_width = 0;
+                int image_height = 0;
+                if (ACameraMetadata_getConstEntry(camera_metadata, ACAMERA_SENSOR_INFO_ACTIVE_ARRAY_SIZE, &e) == ACAMERA_OK) {
+                    image_width = e.data.i32[2];
+                    image_height = e.data.i32[3];
+                    __android_log_print(ANDROID_LOG_DEBUG, "NdkCamera", "Active array size: %d x %d", image_width, image_height);
+                }
+
+                // 计算相机内参
+                if (image_width > 0 && image_height > 0 && sensor_width > 0 && focal_length > 0) {
+                    // 使用硬件参数计算像素焦距
+                    // fx = (focal_length * image_width) / sensor_width
+                    // fy = (focal_length * image_height) / sensor_height
+                    camera_fx = (focal_length * (float)image_width) / sensor_width;
+                    camera_fy = (focal_length * (float)image_height) / sensor_height;
+                    camera_cx = (float)image_width / 2.0f;
+                    camera_cy = (float)image_height / 2.0f;
+                    __android_log_print(ANDROID_LOG_DEBUG, "NdkCamera", "Camera params - fx: %.2f, fy: %.2f, cx: %.2f, cy: %.2f", camera_fx, camera_fy, camera_cx, camera_cy);
+                } else {
+                    //  fallback to default values if hardware params not available
+                    camera_fx = (float)image_width;
+                    camera_fy = (float)image_width;
+                    camera_cx = (float)image_width / 2.0f;
+                    camera_cy = (float)image_height / 2.0f;
+                    __android_log_print(ANDROID_LOG_DEBUG, "NdkCamera", "Using fallback camera params - fx: %.2f, fy: %.2f, cx: %.2f, cy: %.2f", camera_fx, camera_fy, camera_cx, camera_cy);
+                }
+            }
 
             ACameraMetadata_free(camera_metadata);
 

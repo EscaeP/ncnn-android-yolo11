@@ -1,0 +1,7 @@
+com.tencent.yolo11ncnn.app-pngs-0 F:\graduationProject\ncnn-android-yolo11\app\build\generated\res\pngs\debug
+com.tencent.yolo11ncnn.app-resValues-1 F:\graduationProject\ncnn-android-yolo11\app\build\generated\res\resValues\debug
+com.tencent.yolo11ncnn.app-packageDebugResources-2 F:\graduationProject\ncnn-android-yolo11\app\build\intermediates\incremental\debug\packageDebugResources\merged.dir
+com.tencent.yolo11ncnn.app-packageDebugResources-3 F:\graduationProject\ncnn-android-yolo11\app\build\intermediates\incremental\debug\packageDebugResources\stripped.dir
+com.tencent.yolo11ncnn.app-debug-4 F:\graduationProject\ncnn-android-yolo11\app\build\intermediates\merged_res\debug\mergeDebugResources
+com.tencent.yolo11ncnn.app-debug-5 F:\graduationProject\ncnn-android-yolo11\app\src\debug\res
+com.tencent.yolo11ncnn.app-main-6 F:\graduationProject\ncnn-android-yolo11\app\src\main\res

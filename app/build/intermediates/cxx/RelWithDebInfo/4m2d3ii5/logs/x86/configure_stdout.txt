@@ -1,0 +1,8 @@
+-- Found OpenMP_C: -fopenmp=libomp (found version "5.1")
+-- Found OpenMP_CXX: -fopenmp=libomp (found version "5.1")
+-- Found OpenMP_C: -fopenmp=libomp (found version "5.1")
+-- Found OpenMP_CXX: -fopenmp=libomp (found version "5.1")
+-- Found ncnn: 20260113
+-- Configuring done (0.1s)
+-- Generating done (0.1s)
+-- Build files have been written to: F:/graduationProject/ncnn-android-yolo11/app/.cxx/RelWithDebInfo/4m2d3ii5/x86

@@ -3,9 +3,7 @@
     <string name="app_name">yolo11ncnn</string>
     <string-array name="task_array">
         <item>coco</item>
-        <item>seg</item>
         <item>pose</item>
-        <item>cls</item>
         <item>obb</item>
     </string-array>
     <string-array name="model_array">
