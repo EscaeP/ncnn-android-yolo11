@@ -1,2 +1,3 @@
 ninja: Entering directory `F:\graduationProject\ncnn-android-yolo11\app\.cxx\Debug\496aj585\arm64-v8a'
-ninja: no work to do.
+[1/2] Building CXX object CMakeFiles/yolo11ncnn.dir/gdrnet.cpp.o
+[2/2] Linking CXX shared library F:\graduationProject\ncnn-android-yolo11\app\build\intermediates\cxx\Debug\496aj585\obj\arm64-v8a\libyolo11ncnn.so
