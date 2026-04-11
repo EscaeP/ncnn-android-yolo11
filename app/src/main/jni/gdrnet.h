@@ -52,6 +52,8 @@ public:
     // 绘制 3D 边界框
     // size_x, size_y, size_z 分别代表物体在 3D 空间中的长宽高（必须是米 m ！）
     int draw3DBox(cv::Mat& rgb, const PoseResult& pose, const CameraParams& camera_params, float size_x, float size_y, float size_z);
+    // 绘制 3D 边界框（使用YOLO推理框中心点作为原点）
+    int drawbbox(cv::Mat& rgb, const cv::Rect& bbox, const CameraParams& camera_params, float size_x, float size_y, float size_z);
 
 public:
     // 默认相机参数（需要根据实际设备调整）

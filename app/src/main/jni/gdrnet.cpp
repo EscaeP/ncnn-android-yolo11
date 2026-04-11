@@ -191,13 +191,8 @@ int GDRNet::inference(const cv::Mat& roi, const cv::Rect& bbox, int object_label
         float* ptr_x = in1.channel(0).row(y);
         float* ptr_y = in1.channel(1).row(y);
         for (int x = 0; x < 64; x++) {
-            // 计算当前像素在原图中的绝对坐标
-            float orig_x = bbox.x + ((float)x / 63.0f) * bbox.width;
-            float orig_y = bbox.y + ((float)y / 63.0f) * bbox.height;
-
-            // 归一化到 0~1 (除以原图真实宽高)
-            ptr_x[x] = (orig_x - default_camera_params.cx) / default_camera_params.fx;
-            ptr_y[x] = (orig_y - default_camera_params.cy) / default_camera_params.fy;
+            ptr_x[x] = (float)x / 63.0f;
+            ptr_y[x] = (float)y / 63.0f;
         }
     }
 
@@ -215,13 +210,13 @@ int GDRNet::inference(const cv::Mat& roi, const cv::Rect& bbox, int object_label
     switch (object_label) {
         switch (object_label) {
             case 39: // 瓶子
-                in3[0] = 80.0f;  in3[1] = 80.0f;  in3[2] = 180.0f;
+                in3[0] = 50.0f;  in3[1] = 50.0f;  in3[2] = 150.0f;
                 break;
             case 41: // 杯子
-                in3[0] = 70.0f;  in3[1] = 70.0f;  in3[2] =110.0f;
+                in3[0] = 102.2f;  in3[1] = 102.3f;  in3[2] =139.3f;
                 break;
             case 64: // 鼠标
-                in3[0] = 70.0f;  in3[1] = 100.0f;  in3[2] = 40.0f;
+                in3[0] = 101.6f;  in3[1] = 80.1f;  in3[2] = 52.4f;
                 break;
             default:
                 in3.fill(0.0f);
@@ -333,7 +328,7 @@ int GDRNet::inference(const cv::Mat& roi, const cv::Rect& bbox, int object_label
         result.rotation[3] = R_ego(1,0); result.rotation[4] = R_ego(1,1); result.rotation[5] = R_ego(1,2);
         result.rotation[6] = R_ego(2,0); result.rotation[7] = R_ego(2,1); result.rotation[8] = R_ego(2,2);
 
-        // 保存平移 (单位为米)
+        // 保存平移
         result.translation[0] = true_tx;
         result.translation[1] = true_ty;
         result.translation[2] = true_tz;
@@ -520,6 +515,109 @@ int GDRNet::draw3DBox(cv::Mat& rgb, const PoseResult& pose, const CameraParams& 
     cv::line(rgb, corners_2d[3], corners_2d[7], box_color, thickness);
 
     __android_log_print(ANDROID_LOG_DEBUG, "GDRNet", "draw3DBox completed successfully");
+
+    return 0;
+}
+
+int GDRNet::drawbbox(cv::Mat& rgb, const cv::Rect& bbox, const CameraParams& camera_params, float size_x, float size_y, float size_z)
+{
+    __android_log_print(ANDROID_LOG_DEBUG, "GDRNet", "drawbbox called with size: %.3f x %.3f x %.3f", size_x, size_y, size_z);
+    __android_log_print(ANDROID_LOG_DEBUG, "GDRNet", "Camera params - fx: %.2f, fy: %.2f, cx: %.2f, cy: %.2f", 
+        camera_params.fx, camera_params.fy, camera_params.cx, camera_params.cy);
+    __android_log_print(ANDROID_LOG_DEBUG, "GDRNet", "BBox - x: %d, y: %d, width: %d, height: %d", 
+        bbox.x, bbox.y, bbox.width, bbox.height);
+    
+    // 1. 计算YOLO推理框的中心点
+    float center_x = bbox.x + bbox.width / 2.0f;
+    float center_y = bbox.y + bbox.height / 2.0f;
+    
+    // 2. 根据物体的物理尺寸，定义 3D 框的 8 个顶点（以bbox中心点为原点）
+    float dx = size_x / 2.0f;
+    float dy = size_y / 2.0f;
+    float dz = size_z / 2.0f;
+
+    std::vector<cv::Point3f> corners_3d = {
+            cv::Point3f( dx,  dy, -dz),
+            cv::Point3f(-dx,  dy, -dz),
+            cv::Point3f(-dx, -dy, -dz),
+            cv::Point3f( dx, -dy, -dz),
+            cv::Point3f( dx,  dy,  dz),
+            cv::Point3f(-dx,  dy,  dz),
+            cv::Point3f(-dx, -dy,  dz),
+            cv::Point3f( dx, -dy,  dz)
+    };
+
+    std::vector<cv::Point2f> corners_2d;
+
+    // 3. 使用bbox中心点作为原点，不需要旋转，直接投影到2D屏幕上
+    // 假设物体在相机前方1米处
+    float tz = 1.0f;
+    
+    for (size_t i = 0; i < corners_3d.size(); i++) {
+        const auto& pt = corners_3d[i];
+        
+        // 计算3D点的坐标（以相机为原点）
+        // 这里简化处理，假设物体在相机前方固定距离
+        float tx = (center_x - camera_params.cx) * tz / camera_params.fx;
+        float ty = (center_y - camera_params.cy) * tz / camera_params.fy;
+        
+        // 应用物体自身的坐标偏移
+        float x = tx + pt.x;
+        float y = ty + pt.y;
+        float z = tz + pt.z;
+
+        // 投影到 2D 像素坐标
+        if (z > 0.01f) {
+            float u = (camera_params.fx * x / z) + camera_params.cx;
+            float v = (camera_params.fy * y / z) + camera_params.cy;
+            corners_2d.push_back(cv::Point2f(u, v));
+        } else {
+            // 如果跑到相机背面了，返回一个无效点
+            corners_2d.push_back(cv::Point2f(-1, -1));
+        }
+    }
+
+    // 4. 检查是否所有的点都在相机前方（有效）
+    int invalid_points = 0;
+    for (int i = 0; i < corners_2d.size(); i++) {
+        const auto& pt = corners_2d[i];
+        if (pt.x < 0 && pt.y < 0) {
+            invalid_points++;
+            __android_log_print(ANDROID_LOG_DEBUG, "GDRNet", "Invalid corner %d: (%.2f, %.2f)", i, pt.x, pt.y);
+        }
+    }
+    
+    if (invalid_points > 0) {
+        __android_log_print(ANDROID_LOG_DEBUG, "GDRNet", "Found %d invalid points, skipping draw", invalid_points);
+        return -1; // 只要有任何一个点在相机背面，为了画面不崩，就不画框了
+    }
+
+    // 5. 定义连线关系并绘制 3D 框的 12 条边
+    // 颜色为黄色 BGR: (0, 255, 255)，线宽为 2
+    cv::Scalar box_color(0, 255, 255);
+    int thickness = 2;
+
+    __android_log_print(ANDROID_LOG_DEBUG, "GDRNet", "Drawing 3D box edges");
+
+    // 前面 (Front Face) 0-1, 1-2, 2-3, 3-0
+    cv::line(rgb, corners_2d[0], corners_2d[1], box_color, thickness);
+    cv::line(rgb, corners_2d[1], corners_2d[2], box_color, thickness);
+    cv::line(rgb, corners_2d[2], corners_2d[3], box_color, thickness);
+    cv::line(rgb, corners_2d[3], corners_2d[0], box_color, thickness);
+
+    // 后面 (Back Face) 4-5, 5-6, 6-7, 7-4
+    cv::line(rgb, corners_2d[4], corners_2d[5], box_color, thickness);
+    cv::line(rgb, corners_2d[5], corners_2d[6], box_color, thickness);
+    cv::line(rgb, corners_2d[6], corners_2d[7], box_color, thickness);
+    cv::line(rgb, corners_2d[7], corners_2d[4], box_color, thickness);
+
+    // 连接前后面的 4 条支柱 0-4, 1-5, 2-6, 3-7
+    cv::line(rgb, corners_2d[0], corners_2d[4], box_color, thickness);
+    cv::line(rgb, corners_2d[1], corners_2d[5], box_color, thickness);
+    cv::line(rgb, corners_2d[2], corners_2d[6], box_color, thickness);
+    cv::line(rgb, corners_2d[3], corners_2d[7], box_color, thickness);
+
+    __android_log_print(ANDROID_LOG_DEBUG, "GDRNet", "drawbbox completed successfully");
 
     return 0;
 }

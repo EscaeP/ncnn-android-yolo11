@@ -81,14 +81,6 @@ build CMakeFiles/yolo11ncnn.dir/yolo11_pose.cpp.o: CXX_COMPILER__yolo11ncnn_unsc
   OBJECT_DIR = CMakeFiles\yolo11ncnn.dir
   OBJECT_FILE_DIR = CMakeFiles\yolo11ncnn.dir
 
-build CMakeFiles/yolo11ncnn.dir/yolo11_obb.cpp.o: CXX_COMPILER__yolo11ncnn_unscanned_Debug F$:/graduationProject/ncnn-android-yolo11/app/src/main/jni/yolo11_obb.cpp || cmake_object_order_depends_target_yolo11ncnn
-  DEFINES = -Dyolo11ncnn_EXPORTS
-  DEP_FILE = CMakeFiles\yolo11ncnn.dir\yolo11_obb.cpp.o.d
-  FLAGS = -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -march=armv7-a -mthumb -Wformat -Werror=format-security   -fno-limit-debug-info  -fPIC -fno-rtti -fno-exceptions -pthread
-  INCLUDES = -isystem F:/graduationProject/ncnn-android-yolo11/app/src/main/jni/ncnn-20260113-android-vulkan/armeabi-v7a/include/ncnn -isystem F:/graduationProject/ncnn-android-yolo11/app/src/main/jni/opencv-mobile-4.13.0-android/sdk/native/jni/include
-  OBJECT_DIR = CMakeFiles\yolo11ncnn.dir
-  OBJECT_FILE_DIR = CMakeFiles\yolo11ncnn.dir
-
 build CMakeFiles/yolo11ncnn.dir/gdrnet.cpp.o: CXX_COMPILER__yolo11ncnn_unscanned_Debug F$:/graduationProject/ncnn-android-yolo11/app/src/main/jni/gdrnet.cpp || cmake_object_order_depends_target_yolo11ncnn
   DEFINES = -Dyolo11ncnn_EXPORTS
   DEP_FILE = CMakeFiles\yolo11ncnn.dir\gdrnet.cpp.o.d
@@ -113,7 +105,7 @@ build CMakeFiles/yolo11ncnn.dir/ndkcamera.cpp.o: CXX_COMPILER__yolo11ncnn_unscan
 #############################################
 # Link the shared library F:\graduationProject\ncnn-android-yolo11\app\build\intermediates\cxx\Debug\496aj585\obj\armeabi-v7a\libyolo11ncnn.so
 
-build F$:/graduationProject/ncnn-android-yolo11/app/build/intermediates/cxx/Debug/496aj585/obj/armeabi-v7a/libyolo11ncnn.so: CXX_SHARED_LIBRARY_LINKER__yolo11ncnn_Debug CMakeFiles/yolo11ncnn.dir/yolo11ncnn.cpp.o CMakeFiles/yolo11ncnn.dir/yolo11.cpp.o CMakeFiles/yolo11ncnn.dir/yolo11_det.cpp.o CMakeFiles/yolo11ncnn.dir/yolo11_pose.cpp.o CMakeFiles/yolo11ncnn.dir/yolo11_obb.cpp.o CMakeFiles/yolo11ncnn.dir/gdrnet.cpp.o CMakeFiles/yolo11ncnn.dir/ndkcamera.cpp.o | F$:/graduationProject/ncnn-android-yolo11/app/src/main/jni/ncnn-20260113-android-vulkan/armeabi-v7a/lib/libncnn.a F$:/graduationProject/ncnn-android-yolo11/app/src/main/jni/opencv-mobile-4.13.0-android/sdk/native/staticlibs/armeabi-v7a/libopencv_core.a F$:/graduationProject/ncnn-android-yolo11/app/src/main/jni/opencv-mobile-4.13.0-android/sdk/native/staticlibs/armeabi-v7a/libopencv_imgproc.a F$:/graduationProject/ncnn-android-yolo11/app/src/main/jni/ncnn-20260113-android-vulkan/armeabi-v7a/lib/libSPIRV.a F$:/graduationProject/ncnn-android-yolo11/app/src/main/jni/ncnn-20260113-android-vulkan/armeabi-v7a/lib/libglslang.a F$:/graduationProject/ncnn-android-yolo11/app/src/main/jni/opencv-mobile-4.13.0-android/sdk/native/staticlibs/armeabi-v7a/libopencv_core.a
+build F$:/graduationProject/ncnn-android-yolo11/app/build/intermediates/cxx/Debug/496aj585/obj/armeabi-v7a/libyolo11ncnn.so: CXX_SHARED_LIBRARY_LINKER__yolo11ncnn_Debug CMakeFiles/yolo11ncnn.dir/yolo11ncnn.cpp.o CMakeFiles/yolo11ncnn.dir/yolo11.cpp.o CMakeFiles/yolo11ncnn.dir/yolo11_det.cpp.o CMakeFiles/yolo11ncnn.dir/yolo11_pose.cpp.o CMakeFiles/yolo11ncnn.dir/gdrnet.cpp.o CMakeFiles/yolo11ncnn.dir/ndkcamera.cpp.o | F$:/graduationProject/ncnn-android-yolo11/app/src/main/jni/ncnn-20260113-android-vulkan/armeabi-v7a/lib/libncnn.a F$:/graduationProject/ncnn-android-yolo11/app/src/main/jni/opencv-mobile-4.13.0-android/sdk/native/staticlibs/armeabi-v7a/libopencv_core.a F$:/graduationProject/ncnn-android-yolo11/app/src/main/jni/opencv-mobile-4.13.0-android/sdk/native/staticlibs/armeabi-v7a/libopencv_imgproc.a F$:/graduationProject/ncnn-android-yolo11/app/src/main/jni/ncnn-20260113-android-vulkan/armeabi-v7a/lib/libSPIRV.a F$:/graduationProject/ncnn-android-yolo11/app/src/main/jni/ncnn-20260113-android-vulkan/armeabi-v7a/lib/libglslang.a F$:/graduationProject/ncnn-android-yolo11/app/src/main/jni/opencv-mobile-4.13.0-android/sdk/native/staticlibs/armeabi-v7a/libopencv_core.a
   DEP_FILE = CMakeFiles\yolo11ncnn.dir\link.d
   LANGUAGE_COMPILE_FLAGS = -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -march=armv7-a -mthumb -Wformat -Werror=format-security   -fno-limit-debug-info
   LINK_FLAGS = -static-libstdc++ -Wl,--build-id=sha1 -Wl,--no-rosegment -Wl,--no-undefined-version -Wl,--fatal-warnings -Wl,--no-undefined -Qunused-arguments    -Xlinker --dependency-file=CMakeFiles\yolo11ncnn.dir\link.d

@@ -117,6 +117,7 @@ static ncnn::Mutex lock;
 static bool g_paused = false;
 static cv::Mat g_last_frame;
 static std::vector<Object> g_last_objects;
+static int current_task = 0;
 
 class MyNdkCamera : public NdkCameraWindow
 {
@@ -184,48 +185,88 @@ void MyNdkCamera::on_image_render(cv::Mat& rgb) const
                     {
                         __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "Valid ROI: (%d,%d,%d,%d)", 
                             bbox.x, bbox.y, bbox.width, bbox.height);
-                        cv::Mat roi = rgb(bbox);
                         
-                        // 2. 执行GDR-Net推理
-                        PoseResult result;
-                        __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "Running GDR-Net inference...");
-                        g_gdrnet->inference(roi, bbox, obj.label, result);
-
-                        // 绘制3维坐标轴表示6D姿态
-                        __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "Drawing 3D axes...");
-                        g_gdrnet->draw3DAxes(rgb, result, g_gdrnet->default_camera_params, bbox);
-
-                        // 绘制3D边界框
-                        __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "Drawing 3D box...");
-                        // 根据物体类别设置不同的尺寸
-                        float size_x = 0.0f;
-                        float size_y = 0.0f;
-                        float size_z = 0.0f;
-                        switch (obj.label) {
-                            case 39: // 瓶子
-                                size_x = 0.8f;
-                                size_y = 0.8f;
-                                size_z = 1.8f;
-                                break;
-                            case 41: // 杯子
-                                size_x = 0.6f;
-                                size_y = 0.6f;
-                                size_z = 1.4f;
-                                break;
-                            case 64: // 鼠标
-                                size_x = 0.7f;
-                                size_y = 1.0f;
-                                size_z = 0.4f;
-                                break;
-                            default: // 默认尺寸
-                                size_x = 0.0f;
-                                size_y = 0.0f;
-                                size_z = 0.0f; // 8cm x 8cm x 15cm
-                                break;
+                        // 根据任务类型选择不同的处理方式
+                        if (current_task == 2) // ycbv任务
+                        {
+                            __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "Processing for ycbv task, using drawbbox...");
+                            // 直接使用YOLO推理框的中心点作为原点，调用drawbbox
+                            // 根据物体类别设置不同的尺寸
+                            float size_x = 0.0f;
+                            float size_y = 0.0f;
+                            float size_z = 0.0f;
+                            float r=2.0f;
+                            switch (obj.label) {
+                                case 39: // 瓶子
+                                    size_x = 0.08f*r;
+                                    size_y = 0.26f*r;//gao
+                                    size_z = 0.08f*r;
+                                    break;
+                                case 41: // 杯子
+                                    size_x = 0.08f*r;
+                                    size_y = 0.16f*r;
+                                    size_z = 0.08f*r;
+                                    break;
+                                case 64: // 鼠标
+                                    size_x = 0.10f*r;
+                                    size_y = 0.04f*r;
+                                    size_z = 0.06f*r;
+                                    break;
+                                default: // 默认尺寸
+                                    size_x = 0.0f;
+                                    size_y = 0.0f;
+                                    size_z = 0.0f; // 10cm x 10cm x 10cm
+                                    break;
+                            }
+                            __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "Object label: %d, size: %.3f x %.3f x %.3f", obj.label, size_x, size_y, size_z);
+                            int box_result = g_gdrnet->drawbbox(rgb, bbox, g_gdrnet->default_camera_params, size_x, size_y, size_z);
+                            __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "drawbbox result: %d", box_result);
                         }
-                        __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "Object label: %d, size: %.3f x %.3f x %.3f", obj.label, size_x, size_y, size_z);
-                        int box_result = g_gdrnet->draw3DBox(rgb, result, g_gdrnet->default_camera_params, size_x, size_y, size_z);
-                        __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "draw3DBox result: %d", box_result);
+                        else // coco和pose任务
+                        {
+                            cv::Mat roi = rgb(bbox);
+                            
+                            // 2. 执行GDR-Net推理
+                            PoseResult result;
+                            __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "Running GDR-Net inference...");
+                            g_gdrnet->inference(roi, bbox, obj.label, result);
+
+                            // 绘制3维坐标轴表示6D姿态
+                            __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "Drawing 3D axes...");
+                            g_gdrnet->draw3DAxes(rgb, result, g_gdrnet->default_camera_params, bbox);
+
+                            // 绘制3D边界框
+                            __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "Drawing 3D box...");
+                            // 根据物体类别设置不同的尺寸
+                            float size_x = 0.0f;
+                            float size_y = 0.0f;
+                            float size_z = 0.0f;
+                            switch (obj.label) {
+                                case 39: // 瓶子
+                                    size_x = 0.5f;
+                                    size_y = 0.5f;
+                                    size_z = 1.5f;
+                                    break;
+                                case 41: // 杯子
+                                    size_x = 1.022f;
+                                    size_y = 1.023f;
+                                    size_z = 1.393f;
+                                    break;
+                                case 64: // 鼠标
+                                    size_x = 1.016f;
+                                    size_y = 0.801f;
+                                    size_z = 0.524f;
+                                    break;
+                                default: // 默认尺寸
+                                    size_x = 0.0f;
+                                    size_y = 0.0f;
+                                    size_z = 0.0f; // 8cm x 8cm x 15cm
+                                    break;
+                            }
+                            __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "Object label: %d, size: %.3f x %.3f x %.3f", obj.label, size_x, size_y, size_z);
+                            int box_result = g_gdrnet->draw3DBox(rgb, result, g_gdrnet->default_camera_params, size_x, size_y, size_z);
+                            __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "draw3DBox result: %d", box_result);
+                        }
                     }
                     else
                     {
@@ -298,7 +339,7 @@ JNIEXPORT void JNI_OnUnload(JavaVM* vm, void* reserved)
 // public native boolean loadModel(AssetManager mgr, int taskid, int modelid, int cpugpu);
 JNIEXPORT jboolean JNICALL Java_com_tencent_yolo11ncnn_YOLO11Ncnn_loadModel(JNIEnv* env, jobject thiz, jobject assetManager, jint taskid, jint modelid, jint cpugpu)
 {
-    if (taskid < 0 || taskid > 1 || modelid < 0 || modelid > 5 || cpugpu < 0 || cpugpu > 2)
+    if (taskid < 0 || taskid > 2 || modelid < 0 || modelid > 5 || cpugpu < 0 || cpugpu > 2)
     {
         return JNI_FALSE;
     }
@@ -307,10 +348,11 @@ JNIEXPORT jboolean JNICALL Java_com_tencent_yolo11ncnn_YOLO11Ncnn_loadModel(JNIE
 
     __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "loadModel %p", mgr);
 
-    const char* tasknames[2] =
+    const char* tasknames[3] =
     {
         "",
-        "_pose"
+        "_pose",
+        ""
     };
 
     const char* modeltypes[6] =
@@ -333,18 +375,19 @@ JNIEXPORT jboolean JNICALL Java_com_tencent_yolo11ncnn_YOLO11Ncnn_loadModel(JNIE
         ncnn::MutexLockGuard g(lock);
 
         {
-            static int old_taskid = 0;
-            static int old_modelid = 0;
-            static int old_cpugpu = 0;
-            if (taskid != old_taskid || (modelid % 3) != old_modelid || cpugpu != old_cpugpu)
-            {
-                // taskid or model or cpugpu changed
-                delete g_yolo11;
-                g_yolo11 = 0;
-            }
-            old_taskid = taskid;
-            old_modelid = modelid % 3;
-            old_cpugpu = cpugpu;
+                static int old_taskid = 0;
+                static int old_modelid = 0;
+                static int old_cpugpu = 0;
+                if (taskid != old_taskid || (modelid % 3) != old_modelid || cpugpu != old_cpugpu)
+                {
+                    // taskid or model or cpugpu changed
+                    delete g_yolo11;
+                    g_yolo11 = 0;
+                }
+                old_taskid = taskid;
+                old_modelid = modelid % 3;
+                old_cpugpu = cpugpu;
+                current_task = taskid;
 
             ncnn::destroy_gpu_instance();
 
@@ -361,6 +404,7 @@ JNIEXPORT jboolean JNICALL Java_com_tencent_yolo11ncnn_YOLO11Ncnn_loadModel(JNIE
             {
                 if (taskid == 0) g_yolo11 = new YOLO11_det;
                 if (taskid == 1) g_yolo11 = new YOLO11_pose;
+                if (taskid == 2) g_yolo11 = new YOLO11_det; // ycbv任务使用YOLO11_det
 
                 g_yolo11->load(mgr, parampath.c_str(), modelpath.c_str(), use_gpu || use_turnip);
             }

@@ -2,7 +2,7 @@
 <merger version="3"><dataSet aapt-namespace="http://schemas.android.com/apk/res-auto" config="main$Generated" generated="true" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="F:\graduationProject\ncnn-android-yolo11\app\src\main\res"/></dataSet><dataSet aapt-namespace="http://schemas.android.com/apk/res-auto" config="main" generated-set="main$Generated" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="F:\graduationProject\ncnn-android-yolo11\app\src\main\res"><file name="main" path="F:\graduationProject\ncnn-android-yolo11\app\src\main\res\layout\main.xml" qualifiers="" type="layout"/><file path="F:\graduationProject\ncnn-android-yolo11\app\src\main\res\values\strings.xml" qualifiers=""><string name="app_name">yolo11ncnn</string><string-array name="task_array">
         <item>coco</item>
         <item>pose</item>
-        <item>obb</item>
+        <item>ycbv</item>
     </string-array><string-array name="model_array">
         <item>n-320</item>
         <item>s-320</item>
