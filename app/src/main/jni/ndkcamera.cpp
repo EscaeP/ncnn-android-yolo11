@@ -524,49 +524,61 @@ void NdkCameraWindow::on_image_render(cv::Mat& rgb) const
 
 void NdkCameraWindow::on_image(const unsigned char* nv21, int nv21_width, int nv21_height) const
 {
+    // 检查win是否为nullptr
+    if (!win) {
+        __android_log_print(ANDROID_LOG_DEBUG, "NdkCameraWindow", "Window is null, skipping on_image");
+        return;
+    }
+
     // resolve orientation from camera_orientation and accelerometer_sensor
     {
-        if (!sensor_event_queue)
+        if (sensor_manager && accelerometer_sensor && !sensor_event_queue)
         {
             sensor_event_queue = ASensorManager_createEventQueue(sensor_manager, ALooper_prepare(ALOOPER_PREPARE_ALLOW_NON_CALLBACKS), NDKCAMERAWINDOW_ID, 0, 0);
 
-            ASensorEventQueue_enableSensor(sensor_event_queue, accelerometer_sensor);
+            if (sensor_event_queue)
+            {
+                ASensorEventQueue_enableSensor(sensor_event_queue, accelerometer_sensor);
+            }
         }
 
-        int id = ALooper_pollOnce(0, 0, 0, 0);
-        if (id == NDKCAMERAWINDOW_ID)
+        if (sensor_event_queue)
         {
-            ASensorEvent e[8];
-            ssize_t num_event = 0;
-            while (ASensorEventQueue_hasEvents(sensor_event_queue) == 1)
+            int id = ALooper_pollOnce(0, 0, 0, 0);
+            if (id == NDKCAMERAWINDOW_ID)
             {
-                num_event = ASensorEventQueue_getEvents(sensor_event_queue, e, 8);
-                if (num_event < 0)
-                    break;
-            }
+                ASensorEvent e[8];
+                ssize_t num_event = 0;
+                while (ASensorEventQueue_hasEvents(sensor_event_queue) == 1)
+                {
+                    num_event = ASensorEventQueue_getEvents(sensor_event_queue, e, 8);
+                    if (num_event < 0)
+                        break;
+                }
 
-            if (num_event > 0)
-            {
-                float acceleration_x = e[num_event - 1].acceleration.x;
-                float acceleration_y = e[num_event - 1].acceleration.y;
-                float acceleration_z = e[num_event - 1].acceleration.z;
-//                 __android_log_print(ANDROID_LOG_WARN, "NdkCameraWindow", "x = %f, y = %f, z = %f", x, y, z);
+                if (num_event > 0)
+                {
+                    float acceleration_x = e[num_event - 1].acceleration.x;
+                    float acceleration_y = e[num_event - 1].acceleration.y;
+                    float acceleration_z = e[num_event - 1].acceleration.z;
+//                     __android_log_print(ANDROID_LOG_WARN, "NdkCameraWindow", "x = %f, y = %f, z = %f", x, y, z);
 
-                if (acceleration_y > 7)
-                {
-                    accelerometer_orientation = 0;
-                }
-                if (acceleration_x < -7)
-                {
-                    accelerometer_orientation = 90;
-                }
-                if (acceleration_y < -7)
-                {
-                    accelerometer_orientation = 180;
-                }
-                if (acceleration_x > 7)
-                {
-                    accelerometer_orientation = 270;
+                    if (acceleration_y > 7)
+                    {
+                        accelerometer_orientation = 0;
+                    }
+                    if (acceleration_x < -7)
+                    {
+                        accelerometer_orientation = 90;
+                    }
+                    if (acceleration_y < -7)
+                    {
+                        accelerometer_orientation = 180;
+                    }
+                    if (acceleration_x > 7)
+                    {
+                        accelerometer_orientation = 270;
+                    }
                 }
             }
         }

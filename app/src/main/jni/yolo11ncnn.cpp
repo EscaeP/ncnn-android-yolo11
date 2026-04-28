@@ -15,6 +15,10 @@
 #include <android/asset_manager_jni.h>
 #include <android/native_window_jni.h>
 #include <android/native_window.h>
+#include <android/bitmap.h>
+#include <fstream>
+#include <string>
+#include <stdexcept>
 
 #include <android/log.h>
 
@@ -30,13 +34,19 @@
 #include "gdrnet.h"
 
 #include "ndkcamera.h"
-
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 
 #if __ARM_NEON
 #include <arm_neon.h>
 #endif // __ARM_NEON
+#include "json.hpp"
+
+using json = nlohmann::json;
+
+// 使用你定义的全局静态变量
+static json g_det_data;
+static bool g_json_loaded = false;
 
 static int draw_unsupported(cv::Mat& rgb)
 {
@@ -161,8 +171,8 @@ void MyNdkCamera::on_image_render(cv::Mat& rgb) const
                 // 使用固定的相机参数值
                 float current_cx = rgb.cols / 2.0f;
                 float current_cy = rgb.rows / 2.0f;
-                float current_fx = 417.58f; // 【把 800 改回 417.58】
-                float current_fy = 417.58f; // 【把 800 改回 417.58】
+                float current_fx = 417.58f;
+                float current_fy = 417.58f;
 
                 g_gdrnet->setCameraParams(current_fx, current_fy, current_cx, current_cy);
                 __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "Set camera params - fx: %.2f, fy: %.2f, cx: %.2f, cy: %.2f", 
@@ -186,50 +196,13 @@ void MyNdkCamera::on_image_render(cv::Mat& rgb) const
                         __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "Valid ROI: (%d,%d,%d,%d)", 
                             bbox.x, bbox.y, bbox.width, bbox.height);
                         
-                        // 根据任务类型选择不同的处理方式
-                        if (current_task == 2) // ycbv任务
+                        // coco和pose任务
                         {
-                            __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "Processing for ycbv task, using drawbbox...");
-                            // 直接使用YOLO推理框的中心点作为原点，调用drawbbox
-                            // 根据物体类别设置不同的尺寸
-                            float size_x = 0.0f;
-                            float size_y = 0.0f;
-                            float size_z = 0.0f;
-                            float r=2.0f;
-                            switch (obj.label) {
-                                case 39: // 瓶子
-                                    size_x = 0.08f*r;
-                                    size_y = 0.26f*r;//gao
-                                    size_z = 0.08f*r;
-                                    break;
-                                case 41: // 杯子
-                                    size_x = 0.08f*r;
-                                    size_y = 0.16f*r;
-                                    size_z = 0.08f*r;
-                                    break;
-                                case 64: // 鼠标
-                                    size_x = 0.10f*r;
-                                    size_y = 0.04f*r;
-                                    size_z = 0.06f*r;
-                                    break;
-                                default: // 默认尺寸
-                                    size_x = 0.0f;
-                                    size_y = 0.0f;
-                                    size_z = 0.0f; // 10cm x 10cm x 10cm
-                                    break;
-                            }
-                            __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "Object label: %d, size: %.3f x %.3f x %.3f", obj.label, size_x, size_y, size_z);
-                            int box_result = g_gdrnet->drawbbox(rgb, bbox, g_gdrnet->default_camera_params, size_x, size_y, size_z);
-                            __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "drawbbox result: %d", box_result);
-                        }
-                        else // coco和pose任务
-                        {
-                            cv::Mat roi = rgb(bbox);
-                            
+            
                             // 2. 执行GDR-Net推理
                             PoseResult result;
                             __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "Running GDR-Net inference...");
-                            g_gdrnet->inference(roi, bbox, obj.label, result);
+                            g_gdrnet->inference(rgb, bbox, obj.label, result);
 
                             // 绘制3维坐标轴表示6D姿态
                             __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "Drawing 3D axes...");
@@ -305,8 +278,7 @@ static MyNdkCamera* g_camera = 0;
 
 extern "C" {
 
-JNIEXPORT jint JNI_OnLoad(JavaVM* vm, void* reserved)
-{
+JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
     __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "JNI_OnLoad");
 
     g_camera = new MyNdkCamera;
@@ -316,8 +288,7 @@ JNIEXPORT jint JNI_OnLoad(JavaVM* vm, void* reserved)
     return JNI_VERSION_1_4;
 }
 
-JNIEXPORT void JNI_OnUnload(JavaVM* vm, void* reserved)
-{
+JNIEXPORT void JNI_OnUnload(JavaVM *vm, void *reserved) {
     __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "JNI_OnUnload");
 
     {
@@ -325,7 +296,7 @@ JNIEXPORT void JNI_OnUnload(JavaVM* vm, void* reserved)
 
         delete g_yolo11;
         g_yolo11 = 0;
-        
+
         delete g_gdrnet;
         g_gdrnet = 0;
     }
@@ -337,99 +308,97 @@ JNIEXPORT void JNI_OnUnload(JavaVM* vm, void* reserved)
 }
 
 // public native boolean loadModel(AssetManager mgr, int taskid, int modelid, int cpugpu);
-JNIEXPORT jboolean JNICALL Java_com_tencent_yolo11ncnn_YOLO11Ncnn_loadModel(JNIEnv* env, jobject thiz, jobject assetManager, jint taskid, jint modelid, jint cpugpu)
-{
-    if (taskid < 0 || taskid > 2 || modelid < 0 || modelid > 5 || cpugpu < 0 || cpugpu > 2)
-    {
+JNIEXPORT jboolean JNICALL
+Java_com_tencent_yolo11ncnn_YOLO11Ncnn_loadModel(JNIEnv *env, jobject thiz, jobject assetManager,
+                                                 jint taskid, jint modelid, jint cpugpu) {
+    if (taskid < 0 || taskid > 1 || modelid < 0 || modelid > 5 || cpugpu < 0 || cpugpu > 2) {
         return JNI_FALSE;
     }
 
-    AAssetManager* mgr = AAssetManager_fromJava(env, assetManager);
+    AAssetManager *mgr = AAssetManager_fromJava(env, assetManager);
 
     __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "loadModel %p", mgr);
 
-    const char* tasknames[3] =
-    {
-        "",
-        "_pose",
-        ""
-    };
+    const char *tasknames[3] =
+            {
+                    "",
+                    "_pose",
+                    ""
+            };
 
-    const char* modeltypes[6] =
-    {
-        "n",
-        "s",
-        "m",
-        "n",
-        "s",
-        "m"
-    };
+    const char *modeltypes[6] =
+            {
+                    "n",
+                    "s",
+                    "m",
+                    "n",
+                    "s",
+                    "m"
+            };
 
-    std::string parampath = std::string("yolo11") + modeltypes[(int)modelid] + tasknames[(int)taskid] + ".ncnn.param";
-    std::string modelpath = std::string("yolo11") + modeltypes[(int)modelid] + tasknames[(int)taskid] + ".ncnn.bin";
-    bool use_gpu = (int)cpugpu == 1;
-    bool use_turnip = (int)cpugpu == 2;
+    std::string parampath =
+            std::string("yolo11") + modeltypes[(int) modelid] + tasknames[(int) taskid] +
+            ".ncnn.param";
+    std::string modelpath =
+            std::string("yolo11") + modeltypes[(int) modelid] + tasknames[(int) taskid] +
+            ".ncnn.bin";
+    bool use_gpu = (int) cpugpu == 1;
+    bool use_turnip = (int) cpugpu == 2;
 
     // reload
     {
         ncnn::MutexLockGuard g(lock);
 
         {
-                static int old_taskid = 0;
-                static int old_modelid = 0;
-                static int old_cpugpu = 0;
-                if (taskid != old_taskid || (modelid % 3) != old_modelid || cpugpu != old_cpugpu)
-                {
-                    // taskid or model or cpugpu changed
-                    delete g_yolo11;
-                    g_yolo11 = 0;
-                }
-                old_taskid = taskid;
-                old_modelid = modelid % 3;
-                old_cpugpu = cpugpu;
-                current_task = taskid;
+            static int old_taskid = 0;
+            static int old_modelid = 0;
+            static int old_cpugpu = 0;
+            if (taskid != old_taskid || (modelid % 3) != old_modelid || cpugpu != old_cpugpu) {
+                // taskid or model or cpugpu changed
+                delete g_yolo11;
+                g_yolo11 = 0;
+            }
+            old_taskid = taskid;
+            old_modelid = modelid % 3;
+            old_cpugpu = cpugpu;
+            current_task = taskid;
 
             ncnn::destroy_gpu_instance();
 
-            if (use_turnip)
-            {
+            if (use_turnip) {
                 ncnn::create_gpu_instance("libvulkan_freedreno.so");
-            }
-            else if (use_gpu)
-            {
+            } else if (use_gpu) {
                 ncnn::create_gpu_instance();
             }
 
-            if (!g_yolo11)
-            {
+            if (!g_yolo11) {
                 if (taskid == 0) g_yolo11 = new YOLO11_det;
                 if (taskid == 1) g_yolo11 = new YOLO11_pose;
-                if (taskid == 2) g_yolo11 = new YOLO11_det; // ycbv任务使用YOLO11_det
 
                 g_yolo11->load(mgr, parampath.c_str(), modelpath.c_str(), use_gpu || use_turnip);
             }
-            
+
             // Load GDR-Net model
-            if (!g_gdrnet)
-            {
+            if (!g_gdrnet) {
                 __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "Creating GDR-Net instance...");
                 g_gdrnet = new GDRNet;
-                __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "Loading GDR-Net model: model_sim.ncnn.param, model_sim.ncnn.bin");
-                int gdr_load_result = g_gdrnet->load(mgr, "model_sim.ncnn.param", "model_sim.ncnn.bin", use_gpu || use_turnip);
-                __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "GDR-Net load result: %d", gdr_load_result);
-                if (gdr_load_result != 0)
-                {
+                __android_log_print(ANDROID_LOG_DEBUG, "ncnn",
+                                    "Loading GDR-Net model: model_sim.ncnn.param, model_sim.ncnn.bin");
+                int gdr_load_result = g_gdrnet->load(mgr, "model_sim.ncnn.param",
+                                                     "model_sim.ncnn.bin", use_gpu || use_turnip);
+                __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "GDR-Net load result: %d",
+                                    gdr_load_result);
+                if (gdr_load_result != 0) {
                     __android_log_print(ANDROID_LOG_ERROR, "ncnn", "Failed to load GDR-Net model");
-                }
-                else
-                {
-                    __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "GDR-Net model loaded successfully!");
+                } else {
+                    __android_log_print(ANDROID_LOG_DEBUG, "ncnn",
+                                        "GDR-Net model loaded successfully!");
                 }
             }
             int target_size = 320;
-            if ((int)modelid >= 3)
+            if ((int) modelid >= 3)
                 target_size = 480;
-            if ((int)modelid >= 6)
+            if ((int) modelid >= 6)
                 target_size = 640;
             g_yolo11->set_det_target_size(target_size);
         }
@@ -439,21 +408,21 @@ JNIEXPORT jboolean JNICALL Java_com_tencent_yolo11ncnn_YOLO11Ncnn_loadModel(JNIE
 }
 
 // public native boolean openCamera(int facing);
-JNIEXPORT jboolean JNICALL Java_com_tencent_yolo11ncnn_YOLO11Ncnn_openCamera(JNIEnv* env, jobject thiz, jint facing)
-{
+JNIEXPORT jboolean JNICALL
+Java_com_tencent_yolo11ncnn_YOLO11Ncnn_openCamera(JNIEnv *env, jobject thiz, jint facing) {
     if (facing < 0 || facing > 1)
         return JNI_FALSE;
 
     __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "openCamera %d", facing);
 
-    g_camera->open((int)facing);
+    g_camera->open((int) facing);
 
     return JNI_TRUE;
 }
 
 // public native boolean closeCamera();
-JNIEXPORT jboolean JNICALL Java_com_tencent_yolo11ncnn_YOLO11Ncnn_closeCamera(JNIEnv* env, jobject thiz)
-{
+JNIEXPORT jboolean JNICALL
+Java_com_tencent_yolo11ncnn_YOLO11Ncnn_closeCamera(JNIEnv *env, jobject thiz) {
     __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "closeCamera");
 
     g_camera->close();
@@ -462,9 +431,9 @@ JNIEXPORT jboolean JNICALL Java_com_tencent_yolo11ncnn_YOLO11Ncnn_closeCamera(JN
 }
 
 // public native boolean setOutputWindow(Surface surface);
-JNIEXPORT jboolean JNICALL Java_com_tencent_yolo11ncnn_YOLO11Ncnn_setOutputWindow(JNIEnv* env, jobject thiz, jobject surface)
-{
-    ANativeWindow* win = ANativeWindow_fromSurface(env, surface);
+JNIEXPORT jboolean JNICALL
+Java_com_tencent_yolo11ncnn_YOLO11Ncnn_setOutputWindow(JNIEnv *env, jobject thiz, jobject surface) {
+    ANativeWindow *win = ANativeWindow_fromSurface(env, surface);
 
     __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "setOutputWindow %p", win);
 
@@ -474,14 +443,183 @@ JNIEXPORT jboolean JNICALL Java_com_tencent_yolo11ncnn_YOLO11Ncnn_setOutputWindo
 }
 
 // public native boolean togglePause();
-JNIEXPORT jboolean JNICALL Java_com_tencent_yolo11ncnn_YOLO11Ncnn_togglePause(JNIEnv* env, jobject thiz)
-{
+JNIEXPORT jboolean JNICALL
+Java_com_tencent_yolo11ncnn_YOLO11Ncnn_togglePause(JNIEnv *env, jobject thiz) {
     __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "togglePause");
 
     g_paused = !g_paused;
-    __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "Pause state: %s", g_paused ? "paused" : "resumed");
+    __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "Pause state: %s",
+                        g_paused ? "paused" : "resumed");
 
     return JNI_TRUE;
+}
+
+JNIEXPORT jobject JNICALL
+Java_com_tencent_yolo11ncnn_YOLO11Ncnn_processImage(JNIEnv *env, jobject thiz, jobject bitmap,
+                                                    jstring imageName, jstring jsonContent) {
+    __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "========== [ProcessImage START] ==========");
+
+    // ==========================================
+    // 0. 解析 JSON
+    // ==========================================
+    if (!g_json_loaded && jsonContent != nullptr) {
+        const char *jsonChars = env->GetStringUTFChars(jsonContent, nullptr);
+        g_det_data = json::parse(jsonChars, nullptr, false);
+        env->ReleaseStringUTFChars(jsonContent, jsonChars);
+
+        if (g_det_data.is_discarded()) {
+            __android_log_print(ANDROID_LOG_ERROR, "ncnn", "JSON Parse Failed! Invalid format.");
+        } else {
+            g_json_loaded = true;
+        }
+    }
+
+    // ==========================================
+    // 1. Android Bitmap 转 OpenCV Mat
+    // ==========================================
+    AndroidBitmapInfo info;
+    void *pixels;
+    if (AndroidBitmap_getInfo(env, bitmap, &info) < 0) return nullptr;
+    if (AndroidBitmap_lockPixels(env, bitmap, &pixels) < 0) return nullptr;
+
+    cv::Mat image(info.height, info.width, CV_8UC4, pixels);
+    cv::Mat rgb;
+    cv::cvtColor(image, rgb, cv::COLOR_RGBA2BGR);
+    AndroidBitmap_unlockPixels(env, bitmap);
+
+    // ==========================================
+    // 2. 解析 dict_key
+    // ==========================================
+    const char *imageNameChars = env->GetStringUTFChars(imageName, nullptr);
+    std::string nameStr(imageNameChars);
+    env->ReleaseStringUTFChars(imageName, imageNameChars);
+
+    std::string numPart;
+    for (char c: nameStr) {
+        if (isdigit(c)) numPart += c;
+    }
+    int img_id = numPart.empty() ? 0 : std::stoi(numPart);
+    std::string dict_key = "2/" + std::to_string(img_id);
+
+    // ==========================================
+    // 3. 执行 GDR-Net 位姿估计
+    // ==========================================
+    const float SCORE_THR = 0.9f;
+    std::vector<int> target_ids = {1, 5, 6, 8, 9, 10, 11, 12};
+
+    if (g_gdrnet && g_json_loaded && g_det_data.contains(dict_key)) {
+        // 设置相机参数对齐 demo.py
+        float current_cx = 325.2611f;
+        float current_cy = 242.04899f;
+        float current_fx = 572.4114f;
+        float current_fy = 573.57043f;
+        g_gdrnet->setCameraParams(current_fx, current_fy, current_cx, current_cy);
+
+        for (auto &item: g_det_data[dict_key]) {
+            float score = item.value("score", 0.0f);
+            int obj_id = item.value("obj_id", item.value("category_id", -1));
+
+            if (score < SCORE_THR) continue;
+            if (std::find(target_ids.begin(), target_ids.end(), obj_id) ==
+                target_ids.end())
+                continue;
+
+            // 解析边界框 (注意：Python给的是 w, h)
+            auto &b = item.contains("bbox_est") ? item["bbox_est"] : item["bbox"];
+            cv::Rect2f rect(b[0], b[1], b[2], b[3]);
+
+            // 直接推理，裁剪已在 inference 内部完成
+            PoseResult result;
+            int infer_ret = g_gdrnet->inference(rgb, rect, obj_id, result);
+
+            if (infer_ret == 0) {
+                float scale_factor = 0.005f;
+                float sx = 0.0f, sy = 0.0f, sz = 0.0f;
+                switch (obj_id) {
+                    case 1:
+                        sx = 75.9f * scale_factor;
+                        sy = 77.6f * scale_factor;
+                        sz = 91.8f * scale_factor;
+                        break;
+                    case 5:
+                        sx = 100.8f * scale_factor;
+                        sy = 181.8f * scale_factor;
+                        sz = 193.7f * scale_factor;
+                        break;
+                    case 6:
+                        sx = 67.0f * scale_factor;
+                        sy = 127.6f * scale_factor;
+                        sz = 117.5f * scale_factor;
+                        break;
+                    case 8:
+                        sx = 229.5f * scale_factor;
+                        sy = 75.5f * scale_factor;
+                        sz = 208.0f * scale_factor;
+                        break;
+                    case 9:
+                        sx = 104.4f * scale_factor;
+                        sy = 77.4f * scale_factor;
+                        sz = 85.7f * scale_factor;
+                        break;
+                    case 10:
+                        sx = 150.2f * scale_factor;
+                        sy = 107.1f * scale_factor;
+                        sz = 69.2f * scale_factor;
+                        break;
+                    case 11:
+                        sx = 36.7f * scale_factor;
+                        sy = 77.9f * scale_factor;
+                        sz = 172.8f * scale_factor;
+                        break;
+                    case 12:
+                        sx = 100.9f * scale_factor;
+                        sy = 108.5f * scale_factor;
+                        sz = 90.8f * scale_factor;
+                        break;
+                }
+
+
+                // 在原图上绘制
+                g_gdrnet->draw3DBox(rgb, result, g_gdrnet->default_camera_params, sx, sy, sz);
+                //g_gdrnet->draw3DAxes(rgb, result, g_gdrnet->default_camera_params, rect);
+
+                cv::rectangle(rgb, rect, cv::Scalar(255, 0, 0), 1);
+                //char text[32];
+                //sprintf(text, "Obj:%d S:%.2f", obj_id, score);
+                //cv::putText(rgb, text, cv::Point(rect.x, rect.y - 10), cv::FONT_HERSHEY_SIMPLEX,0.5, cv::Scalar(0, 255, 255), 1);
+            }
+            else{
+                __android_log_print(ANDROID_LOG_ERROR, "ncnn", "infer出错");
+            }
+        }
+    }
+
+    // ==========================================
+    // 4. 返回给 Java
+    // ==========================================
+    cv::Mat output;
+    cv::cvtColor(rgb, output, cv::COLOR_BGR2RGBA);
+
+    jclass bitmapClass = env->FindClass("android/graphics/Bitmap");
+    jmethodID createBitmapMethod = env->GetStaticMethodID(bitmapClass, "createBitmap",
+                                                          "(IILandroid/graphics/Bitmap$Config;)Landroid/graphics/Bitmap;");
+    jclass configClass = env->FindClass("android/graphics/Bitmap$Config");
+    jfieldID argb8888Field = env->GetStaticFieldID(configClass, "ARGB_8888",
+                                                   "Landroid/graphics/Bitmap$Config;");
+    jobject argb8888Config = env->GetStaticObjectField(configClass, argb8888Field);
+
+    jobject resultBitmap = env->CallStaticObjectMethod(bitmapClass, createBitmapMethod, output.cols,
+                                                       output.rows, argb8888Config);
+    if (!resultBitmap) return nullptr;
+
+    void *resultPixels;
+    if (AndroidBitmap_lockPixels(env, resultBitmap, &resultPixels) == 0) {
+        memcpy(resultPixels, output.data, output.total() * output.elemSize());
+        AndroidBitmap_unlockPixels(env, resultBitmap);
+    }
+
+    __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "========== [ProcessImage END] ==========");
+    return resultBitmap;
 }
 
 }

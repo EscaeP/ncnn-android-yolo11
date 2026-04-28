@@ -5,7 +5,9 @@ array model_array
 array task_array
 id buttonPause
 id buttonSwitchCamera
+id buttonUploadImage
 id cameraview
+id imageViewResult
 id spinnerCPUGPU
 id spinnerModel
 id spinnerTask

@@ -24,6 +24,7 @@ public class YOLO11Ncnn
     public native boolean closeCamera();
     public native boolean setOutputWindow(Surface surface);
     public native boolean togglePause();
+    public native android.graphics.Bitmap processImage(android.graphics.Bitmap bitmap, String imageName,String jsonContent);
 
     static {
         System.loadLibrary("yolo11ncnn");

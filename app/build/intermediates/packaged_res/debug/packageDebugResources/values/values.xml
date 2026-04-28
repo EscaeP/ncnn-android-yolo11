@@ -19,7 +19,6 @@
     <string-array name="task_array">
         <item>coco</item>
         <item>pose</item>
-        <item>ycbv</item>
     </string-array>
     <string name="app_name">yolo11ncnn</string>
 </resources>

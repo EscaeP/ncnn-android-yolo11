@@ -1,3 +1,0 @@
-F:/graduationProject/ncnn-android-yolo11/app/.cxx/Debug/496aj585/armeabi-v7a/CMakeFiles/yolo11ncnn.dir
-F:/graduationProject/ncnn-android-yolo11/app/.cxx/Debug/496aj585/armeabi-v7a/CMakeFiles/edit_cache.dir
-F:/graduationProject/ncnn-android-yolo11/app/.cxx/Debug/496aj585/armeabi-v7a/CMakeFiles/rebuild_cache.dir

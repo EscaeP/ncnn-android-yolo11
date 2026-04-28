@@ -1,1 +1,0 @@
-F:\graduationProject\ncnn-android-yolo11\app\build\intermediates\cxx\RelWithDebInfo\4m2d3ii5\obj\x86
