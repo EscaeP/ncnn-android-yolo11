@@ -41,6 +41,8 @@ using json = nlohmann::json;
 
 static json g_det_data;
 static bool g_json_loaded = false;
+static json g_models_info;
+static bool g_models_info_loaded = false;
 
 static GDRNet* g_gdrnet = 0;
 static ncnn::Mutex lock;
@@ -116,35 +118,97 @@ JNIEXPORT void JNI_OnUnload(JavaVM *vm, void *reserved) {
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_tencent_yolo11ncnn_YOLO11Ncnn_loadModel(JNIEnv *env, jobject thiz, jobject assetManager,
-                                                jint modelid, jint cpugpu, jint task) {
-    __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "loadModel - modelid: %d, cpugpu: %d, task: %d", modelid, cpugpu, task);
+Java_com_tencent_yolo11ncnn_YOLO11Ncnn_loadModel
+        (JNIEnv *env, jobject thiz, jobject assetManager,
+         jint modelid, jint cpugpu, jint task)
+{
+    __android_log_print(ANDROID_LOG_DEBUG,
+                        "ncnn", "loadModel - modelid: %d, cpugpu: %d, task: %d"
+            , modelid, cpugpu, task);
 
     {
-        ncnn::MutexLockGuard g(lock);
+        ncnn::MutexLockGuard g(lock)
+        ;
 
-        if (g_gdrnet)
-        {
-            delete g_gdrnet;
-            g_gdrnet = 0;
+        if
+                (g_gdrnet) {
+            delete
+                    g_gdrnet;
+            g_gdrnet =
+                    0
+                    ;
         }
 
-        g_gdrnet = new GDRNet();
-
-        bool use_gpu = cpugpu == 1;
-
+        g_gdrnet =
+                new
+                        GDRNet();
+        bool use_gpu = cpugpu == 1
+        ;
         AAssetManager* mgr = AAssetManager_fromJava(env, assetManager);
 
-        int ret = g_gdrnet->load(mgr, "gdrnet.param", "gdrnet.bin", use_gpu);
-        if (ret != 0)
+        int ret = g_gdrnet->load(mgr, "gdrnet.param", "gdrnet.bin"
+                , use_gpu);
+        if (ret != 0
+                ) {
+            delete
+                    g_gdrnet;
+            g_gdrnet =
+                    0
+                    ;
+            return
+                    JNI_FALSE;
+        }
+
+        // ==========================================
+        // 加载 models_info.json
+        // ==========================================
+        AAsset* info_asset = AAssetManager_open(mgr,
+                                                "models/models_info.json"
+                , AASSET_MODE_BUFFER);
+        if
+                (info_asset) {
+            const void
+                    * data = AAsset_getBuffer(info_asset);
+            off_t
+                    len = AAsset_getLength(info_asset);
+            std::string json_str((const char*)data, len)
+            ;
+
+            // 核心修改：使用无异常模式解析 (nullptr, false)
+            g_models_info = json::parse(json_str,
+                                        nullptr, false
+            );
+
+            if
+                    (g_models_info.is_discarded()) {
+                __android_log_print(ANDROID_LOG_ERROR,
+                                    "ncnn", "Parse error: models_info.json format is invalid!"
+                );
+                g_models_info_loaded =
+                        false
+                        ;
+            }
+            else
+            {
+                g_models_info_loaded =
+                        true
+                        ;
+                __android_log_print(ANDROID_LOG_DEBUG,
+                                    "ncnn", "models_info.json loaded successfully!"
+                );
+            }
+            AAsset_close(info_asset);
+        }
+        else
         {
-            delete g_gdrnet;
-            g_gdrnet = 0;
-            return JNI_FALSE;
+            __android_log_print(ANDROID_LOG_ERROR,
+                                "ncnn", "Failed to open models/models_info.json"
+            );
         }
     }
 
-    return JNI_TRUE;
+    return
+            JNI_TRUE;
 }
 
 JNIEXPORT jboolean JNICALL
@@ -267,68 +331,48 @@ Java_com_tencent_yolo11ncnn_YOLO11Ncnn_processImage(JNIEnv *env, jobject thiz, j
             int obj_id = item.value("obj_id", item.value("category_id", -1));
 
             if (score < SCORE_THR) continue;
-            if (std::find(target_ids.begin(), target_ids.end(), obj_id) ==
-                target_ids.end())
-                continue;
+            if (std::find(target_ids.begin(), target_ids.end(), obj_id) == target_ids.end()) continue;
 
             auto &b = item.contains("bbox_est") ? item["bbox_est"] : item["bbox"];
             cv::Rect2f rect(b[0], b[1], b[2], b[3]);
 
+            // ==========================================
+            // 从 JSON 动态获取当前物体的物理尺寸与不对称边界
+            // ==========================================
+            std::string obj_key = std::to_string(obj_id);
+            if (!g_models_info_loaded || !g_models_info.contains(obj_key)) {
+                __android_log_print(ANDROID_LOG_ERROR, "ncnn", "Missing models_info for obj: %d", obj_id);
+                continue;
+            }
+
+            float scale_factor = 0.005f;
+
+            // 获取物理尺寸 (送入网络推理)
+            float size_x = g_models_info[obj_key]["size_x"].get<float>() * scale_factor;
+            float size_y = g_models_info[obj_key]["size_y"].get<float>() * scale_factor;
+            float size_z = g_models_info[obj_key]["size_z"].get<float>() * scale_factor;
+
+            // 获取真实的不对称包围盒边界 (用于 3D 渲染)
+            float min_x = g_models_info[obj_key]["min_x"].get<float>() * scale_factor;
+            float min_y = g_models_info[obj_key]["min_y"].get<float>() * scale_factor;
+            float min_z = g_models_info[obj_key]["min_z"].get<float>() * scale_factor;
+            float max_x = min_x + size_x;
+            float max_y = min_y + size_y;
+            float max_z = min_z + size_z;
+
             PoseResult result;
-            int infer_ret = g_gdrnet->inference(rgb, rect, obj_id, result);
+
+            // 注意这里：inference 传入动态提取的 size
+            int infer_ret = g_gdrnet->inference(rgb, rect, obj_id, size_x, size_y, size_z, result);
 
             if (infer_ret == 0) {
-                float scale_factor = 0.005f;
-                float sx = 0.0f, sy = 0.0f, sz = 0.0f;
-                switch (obj_id) {
-                    case 1:
-                        sx = 75.9f * scale_factor;
-                        sy = 77.6f * scale_factor;
-                        sz = 91.8f * scale_factor;
-                        break;
-                    case 5:
-                        sx = 100.8f * scale_factor;
-                        sy = 181.8f * scale_factor;
-                        sz = 193.7f * scale_factor;
-                        break;
-                    case 6:
-                        sx = 67.0f * scale_factor;
-                        sy = 127.6f * scale_factor;
-                        sz = 117.5f * scale_factor;
-                        break;
-                    case 8:
-                        sx = 229.5f * scale_factor;
-                        sy = 75.5f * scale_factor;
-                        sz = 208.0f * scale_factor;
-                        break;
-                    case 9:
-                        sx = 104.4f * scale_factor;
-                        sy = 77.4f * scale_factor;
-                        sz = 85.7f * scale_factor;
-                        break;
-                    case 10:
-                        sx = 150.2f * scale_factor;
-                        sy = 107.1f * scale_factor;
-                        sz = 69.2f * scale_factor;
-                        break;
-                    case 11:
-                        sx = 36.7f * scale_factor;
-                        sy = 77.9f * scale_factor;
-                        sz = 172.8f * scale_factor;
-                        break;
-                    case 12:
-                        sx = 100.9f * scale_factor;
-                        sy = 108.5f * scale_factor;
-                        sz = 90.8f * scale_factor;
-                        break;
-                }
-
-                g_gdrnet->draw3DBox(rgb, result, g_gdrnet->default_camera_params, sx, sy, sz);
+                // 注意这里：draw3DBox 传入真实的不对称 max 和 min
+                g_gdrnet->draw3DBox(rgb, result, g_gdrnet->default_camera_params,
+                                    min_x, max_x, min_y, max_y, min_z, max_z);
 
                 cv::rectangle(rgb, rect, cv::Scalar(255, 0, 0), 1);
-            }
-            else{
-                __android_log_print(ANDROID_LOG_ERROR, "ncnn", "infer出错");
+            } else {
+                __android_log_print(ANDROID_LOG_ERROR, "ncnn", "infer出错, obj_id: %d", obj_id);
             }
         }
     }

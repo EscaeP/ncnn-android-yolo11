@@ -48,13 +48,14 @@ public:
     int inference(const cv::Mat& roi, const cv::Rect& bbox, int object_label, PoseResult& result);
     
     // 上传图片进行处理
-    int inferPicture(const cv::Mat& image, PoseResult& result);
+    int inference(const cv::Mat& full_img, const cv::Rect& bbox, int object_label,
+                  float size_x, float size_y, float size_z, PoseResult& result);
     
     // 3D姿态相关方法
     int draw3DAxes(cv::Mat& rgb, const PoseResult& pose, const CameraParams& camera_params, const cv::Rect& roi);
     // 绘制 3D 边界框
-    int draw3DBox(cv::Mat& rgb, const PoseResult& pose, const CameraParams& camera_params, float size_x, float size_y, float size_z);
-
+    int draw3DBox(cv::Mat& rgb, const PoseResult& pose, const CameraParams& camera_params,
+                  float min_x, float max_x, float min_y, float max_y, float min_z, float max_z);
 
 public:
     // 默认相机参数（需要根据实际设备调整）

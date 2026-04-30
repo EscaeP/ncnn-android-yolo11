@@ -129,7 +129,8 @@ int GDRNet::load(AAssetManager* mgr, const char* parampath, const char* modelpat
     return 0;
 }
 
-int GDRNet::inference(const cv::Mat& full_img, const cv::Rect& bbox, int object_label, PoseResult& result)
+int GDRNet::inference(const cv::Mat& full_img, const cv::Rect& bbox, int object_label,
+                      float size_x, float size_y, float size_z, PoseResult& result)
 {
     // ===============================
     // 1. 预处理：生成 ROI (与原代码保持一致)
@@ -181,18 +182,9 @@ int GDRNet::inference(const cv::Mat& full_img, const cv::Rect& bbox, int object_
 
     // [输入3] in2: 3D bounding box 物理尺寸
     ncnn::Mat in2(3);
-    float scale_factor = 0.005f;
-    switch (object_label) {
-        case 1:  in2[0] = 75.9f * scale_factor; in2[1] = 77.6f * scale_factor; in2[2] = 91.8f * scale_factor; break;
-        case 5:  in2[0] = 100.8f * scale_factor; in2[1] = 181.8f * scale_factor; in2[2] = 193.7f * scale_factor; break;
-        case 6:  in2[0] = 67.0f * scale_factor; in2[1] = 127.6f * scale_factor; in2[2] = 117.5f * scale_factor; break;
-        case 8:  in2[0] = 229.5f * scale_factor; in2[1] = 75.5f * scale_factor; in2[2] = 208.0f * scale_factor; break;
-        case 9:  in2[0] = 104.4f * scale_factor; in2[1] = 77.4f * scale_factor; in2[2] = 85.7f * scale_factor; break;
-        case 10: in2[0] = 150.2f * scale_factor; in2[1] = 107.1f * scale_factor; in2[2] = 69.2f * scale_factor; break;
-        case 11: in2[0] = 36.7f * scale_factor; in2[1] = 77.9f * scale_factor; in2[2] = 172.8f * scale_factor; break;
-        case 12: in2[0] = 100.9f * scale_factor; in2[1] = 108.5f * scale_factor; in2[2] = 90.8f * scale_factor; break;
-        default: in2.fill(0.f); break;
-    }
+    in2[0] = size_x;
+    in2[1] = size_y;
+    in2[2] = size_z;
     __android_log_print(ANDROID_LOG_DEBUG, "GDRNet_IN", "Input in2 (extents): w=%d, h=%d, c=%d", in2.w, in2.h, in2.c);
     __android_log_print(ANDROID_LOG_DEBUG, "GDRNet_IN", "in2 values: [%.6f, %.6f, %.6f]", in2[0], in2[1], in2[2]);
 
@@ -245,23 +237,20 @@ int GDRNet::inference(const cv::Mat& full_img, const cv::Rect& bbox, int object_
     result.translation[1] = (pixel_y - default_camera_params.cy) * tz / default_camera_params.fy;
     result.translation[2] = tz;
 
-    // [B] 解算旋转矩阵 (严格对齐 demo.py)
-    cv::Vec3f x_raw(out0[0], out0[1], out0[2]);
-    cv::Vec3f y_raw(out0[3], out0[4], out0[5]);
+    // [B] 解算旋转矩阵：直接生成 Egocentric 旋转矩阵
+    cv::Vec3f x_raw(out0_data[0], out0_data[1], out0_data[2]);
+    cv::Vec3f y_raw(out0_data[3], out0_data[4], out0_data[5]);
 
-    // 1. 归一化 x
+    // 1. 施密特正交化 (Gram-Schmidt)
     float norm_x = std::max((float)cv::norm(x_raw), 1e-8f);
     cv::Vec3f x = x_raw / norm_x;
-
-    // 2. 减去投影算 y，并归一化
     cv::Vec3f y_proj = y_raw - x * x.dot(y_raw);
     float norm_y = std::max((float)cv::norm(y_proj), 1e-8f);
     cv::Vec3f y = y_proj / norm_y;
-
-    // 3. 叉乘算 z
     cv::Vec3f z = x.cross(y);
 
-    // 4. 直接赋值给 PoseResult
+    // 2. 直接赋值 (放弃 R_ray 相机射线补偿，完全对齐 Python)
+    // 注意：x, y, z 是作为列向量 (Column vectors) 写入 3x3 矩阵的
     result.rotation[0] = x[0]; result.rotation[1] = y[0]; result.rotation[2] = z[0];
     result.rotation[3] = x[1]; result.rotation[4] = y[1]; result.rotation[5] = z[1];
     result.rotation[6] = x[2]; result.rotation[7] = y[2]; result.rotation[8] = z[2];
@@ -294,44 +283,41 @@ static inline bool project3DTo2D(const cv::Point3f& pt3d, const PoseResult& pose
     return true;
 }
 
-int GDRNet::draw3DBox(cv::Mat& rgb, const PoseResult& pose, const CameraParams& camera_params, float size_x, float size_y, float size_z)
+int GDRNet::draw3DBox(cv::Mat& rgb, const PoseResult& pose, const CameraParams& camera_params,
+                      float min_x, float max_x, float min_y, float max_y, float min_z, float max_z)
 {
-    __android_log_print(ANDROID_LOG_DEBUG, "GDRNet","绘制");
-    float dx = size_x / 2.0f;
-    float dy = size_y / 2.0f;
-    float dz = size_z / 2.0f;
-
+    // 彻底抛弃居中的假设，使用真实的不对称角点坐标！
     std::vector<cv::Point3f> points_3d = {
-            cv::Point3f( dx,  dy,  dz), // 0
-            cv::Point3f(-dx,  dy,  dz), // 1
-            cv::Point3f(-dx, -dy,  dz), // 2
-            cv::Point3f( dx, -dy,  dz), // 3
-            cv::Point3f( dx,  dy, -dz), // 4
-            cv::Point3f(-dx,  dy, -dz), // 5
-            cv::Point3f(-dx, -dy, -dz), // 6
-            cv::Point3f( dx, -dy, -dz)  // 7
+            cv::Point3f( max_x,  max_y,  max_z), // 0
+            cv::Point3f( min_x,  max_y,  max_z), // 1
+            cv::Point3f( min_x,  min_y,  max_z), // 2
+            cv::Point3f( max_x,  min_y,  max_z), // 3
+            cv::Point3f( max_x,  max_y,  min_z), // 4
+            cv::Point3f( min_x,  max_y,  min_z), // 5
+            cv::Point3f( min_x,  min_y,  min_z), // 6
+            cv::Point3f( max_x,  min_y,  min_z)  // 7
     };
 
     std::vector<cv::Point> qs(8);
     for (int i = 0; i < 8; ++i) {
         if (!project3DTo2D(points_3d[i], pose, camera_params, qs[i])) {
-            __android_log_print(ANDROID_LOG_ERROR, "GDRNet","失败");
+            __android_log_print(ANDROID_LOG_ERROR, "GDRNet", "Projection failed for corner %d", i);
             return -1;
         }
     }
 
     int thickness = 2;
-    cv::Scalar box_color(0, 255, 0);
+    cv::Scalar default_color(0, 255, 0);
 
     for (int k = 0; k < 4; ++k) {
         int i_bot = k + 4, j_bot = (k + 1) % 4 + 4;
-        cv::line(rgb, qs[i_bot], qs[j_bot], box_color, thickness, cv::LINE_AA);
+        cv::line(rgb, qs[i_bot], qs[j_bot], default_color, thickness, cv::LINE_AA);
 
         int i_mid = k, j_mid = k + 4;
-        cv::line(rgb, qs[i_mid], qs[j_mid], box_color, thickness, cv::LINE_AA);
+        cv::line(rgb, qs[i_mid], qs[j_mid], default_color, thickness, cv::LINE_AA);
 
         int i_top = k, j_top = (k + 1) % 4;
-        cv::line(rgb, qs[i_top], qs[j_top], box_color, thickness, cv::LINE_AA);
+        cv::line(rgb, qs[i_top], qs[j_top], default_color, thickness, cv::LINE_AA);
     }
 
     return 0;
