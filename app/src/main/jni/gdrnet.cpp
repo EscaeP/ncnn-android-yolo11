@@ -92,8 +92,33 @@ int GDRNet::load(AAssetManager* mgr, const char* parampath, const char* modelpat
         return -1;
     }
 
+    // 检查param文件是否存在
+    AAsset* param_asset = AAssetManager_open(mgr, parampath, AASSET_MODE_STREAMING);
+    if (!param_asset) {
+        __android_log_print(ANDROID_LOG_ERROR, "GDRNet", "Param file not found: %s", parampath);
+        return -1;
+    } else {
+        off_t param_size = AAsset_getLength(param_asset);
+        __android_log_print(ANDROID_LOG_DEBUG, "GDRNet", "Param file found: %s, size: %ld bytes", parampath, param_size);
+        AAsset_close(param_asset);
+    }
+
+    // 检查model文件是否存在
+    AAsset* model_asset = AAssetManager_open(mgr, modelpath, AASSET_MODE_STREAMING);
+    if (!model_asset) {
+        __android_log_print(ANDROID_LOG_ERROR, "GDRNet", "Model file not found: %s", modelpath);
+        return -1;
+    } else {
+        off_t model_size = AAsset_getLength(model_asset);
+        __android_log_print(ANDROID_LOG_DEBUG, "GDRNet", "Model file found: %s, size: %ld bytes", modelpath, model_size);
+        AAsset_close(model_asset);
+    }
+
     int param_result = gdrnet.load_param(mgr, parampath);
+    __android_log_print(ANDROID_LOG_DEBUG, "GDRNet", "load_param result: %d", param_result);
+
     int model_result = gdrnet.load_model(mgr, modelpath);
+    __android_log_print(ANDROID_LOG_DEBUG, "GDRNet", "load_model result: %d", model_result);
 
     if (param_result != 0 || model_result != 0) {
         __android_log_print(ANDROID_LOG_ERROR, "GDRNet", "Failed to load model file (param: %d, model: %d)", param_result, model_result);
@@ -107,15 +132,21 @@ int GDRNet::load(AAssetManager* mgr, const char* parampath, const char* modelpat
 int GDRNet::inference(const cv::Mat& full_img, const cv::Rect& bbox, int object_label, PoseResult& result)
 {
     // ===============================
-    // 1. 预处理：生成 ROI (对齐 demo.py)
+    // 1. 预处理：生成 ROI (与原代码保持一致)
     // ===============================
     float cx = bbox.x + bbox.width / 2.0f;
     float cy = bbox.y + bbox.height / 2.0f;
-    // demo.py: scale = max(w, h) * 1.5
     float scale = std::max((float)bbox.width, (float)bbox.height) * 1.5f;
     float resize_ratio = (float)INPUT_RES / scale;
 
-    // 仿射变换矩阵：将 ROI 区域映射到 256x256
+    // 打印输入基础信息
+    __android_log_print(ANDROID_LOG_DEBUG, "GDRNet_IN", "Full image: %dx%d", full_img.cols, full_img.rows);
+    __android_log_print(ANDROID_LOG_DEBUG, "GDRNet_IN", "Bbox: x=%d, y=%d, w=%d, h=%d", bbox.x, bbox.y, bbox.width, bbox.height);
+    __android_log_print(ANDROID_LOG_DEBUG, "GDRNet_IN", "Object label: %d", object_label);
+    __android_log_print(ANDROID_LOG_DEBUG, "GDRNet_IN", "ROI center: (%.2f, %.2f), scale: %.2f, resize_ratio: %.4f", cx, cy, scale, resize_ratio);
+    __android_log_print(ANDROID_LOG_DEBUG, "GDRNet_IN", "Camera params: fx=%.2f, fy=%.2f, cx=%.2f, cy=%.2f", 
+        default_camera_params.fx, default_camera_params.fy, default_camera_params.cx, default_camera_params.cy);
+
     cv::Matx23f M;
     M(0, 0) = resize_ratio; M(0, 1) = 0;            M(0, 2) = INPUT_RES / 2.0f - cx * resize_ratio;
     M(1, 0) = 0;            M(1, 1) = resize_ratio; M(1, 2) = INPUT_RES / 2.0f - cy * resize_ratio;
@@ -123,35 +154,34 @@ int GDRNet::inference(const cv::Mat& full_img, const cv::Rect& bbox, int object_
     cv::Mat resized;
     cv::warpAffine(full_img, resized, M, cv::Size(INPUT_RES, INPUT_RES), cv::INTER_LINEAR);
 
-    // [输入1] in0: 图像归一化与 Mean/Std
+    // [输入1] in0: 图像
     ncnn::Mat in0 = ncnn::Mat::from_pixels(resized.data, ncnn::Mat::PIXEL_BGR, INPUT_RES, INPUT_RES);
-    const float mean_vals[3] = {103.53f, 116.28f, 123.675f};
-    const float norm_vals[3] = {1.0f/57.375f, 1.0f/57.12f, 1.0f/58.395f};
+    // 根据配置文件，仅仅将像素值缩放到 [0, 1] 即可
+    const float mean_vals[3] = {0.0f, 0.0f, 0.0f};
+    const float norm_vals[3] = {1.0f/255.0f, 1.0f/255.0f, 1.0f/255.0f};
     in0.substract_mean_normalize(mean_vals, norm_vals);
+    __android_log_print(ANDROID_LOG_DEBUG, "GDRNet_IN", "Input in0 (image): w=%d, h=%d, c=%d", in0.w, in0.h, in0.c);
 
-    // [输入2] in1: 2D 坐标网格 [64, 64, 2]
+    // [输入2] in1: 2D 坐标网格
     ncnn::Mat in1(64, 64, 2);
-
     for (int y = 0; y < 64; y++) {
-        // Python np.linspace(0, 1, 64) 对应的步长
         float norm_y = (float)y / 63.0f;
-
         float* ptr_x = in1.channel(0).row(y);
         float* ptr_y = in1.channel(1).row(y);
-
         for (int x = 0; x < 64; x++) {
-            float norm_x = (float)x / 63.0f;
-            ptr_x[x] = norm_x;
+            ptr_x[x] = (float)x / 63.0f;
             ptr_y[x] = norm_y;
         }
     }
+    __android_log_print(ANDROID_LOG_DEBUG, "GDRNet_IN", "Input in1 (coord grid): w=%d, h=%d, c=%d", in1.w, in1.h, in1.c);
+    __android_log_print(ANDROID_LOG_DEBUG, "GDRNet_IN", "in1 sample: (0,0)=(%.4f,%.4f), (32,32)=(%.4f,%.4f), (63,63)=(%.4f,%.4f)",
+        in1.channel(0).row(0)[0], in1.channel(1).row(0)[0],
+        in1.channel(0).row(32)[32], in1.channel(1).row(32)[32],
+        in1.channel(0).row(63)[63], in1.channel(1).row(63)[63]);
 
-    // ===============================
-    // 2. 准备物理尺寸 extents (替换掉原先复杂的其余5个输入)
-    // ===============================
-    // [输入3] in2: 3D bounding box 的物理尺寸
+    // [输入3] in2: 3D bounding box 物理尺寸
     ncnn::Mat in2(3);
-    float scale_factor = 0.005f; // 单位转换
+    float scale_factor = 0.005f;
     switch (object_label) {
         case 1:  in2[0] = 75.9f * scale_factor; in2[1] = 77.6f * scale_factor; in2[2] = 91.8f * scale_factor; break;
         case 5:  in2[0] = 100.8f * scale_factor; in2[1] = 181.8f * scale_factor; in2[2] = 193.7f * scale_factor; break;
@@ -163,128 +193,78 @@ int GDRNet::inference(const cv::Mat& full_img, const cv::Rect& bbox, int object_
         case 12: in2[0] = 100.9f * scale_factor; in2[1] = 108.5f * scale_factor; in2[2] = 90.8f * scale_factor; break;
         default: in2.fill(0.f); break;
     }
+    __android_log_print(ANDROID_LOG_DEBUG, "GDRNet_IN", "Input in2 (extents): w=%d, h=%d, c=%d", in2.w, in2.h, in2.c);
+    __android_log_print(ANDROID_LOG_DEBUG, "GDRNet_IN", "in2 values: [%.6f, %.6f, %.6f]", in2[0], in2[1], in2[2]);
 
     // ===============================
-    // 3. 执行 NCNN 推理
+    // 2. 执行 NCNN 推理：使用动态索引提取 (无视幽灵字符)
     // ===============================
-    
-    // 打印非图片输入信息
-
-    __android_log_print(ANDROID_LOG_DEBUG, "GDRNet", "Input in2 (extents) shape: w=%d, h=%d, c=%d", in2.w, in2.h, in2.c);
-    __android_log_print(ANDROID_LOG_DEBUG, "GDRNet", "Input in2 (extents): [%.4f, %.4f, %.4f]", in2[0], in2[1], in2[2]);
-    __android_log_print(ANDROID_LOG_DEBUG, "GDRNet", "Object label: %d", object_label);
-    __android_log_print(ANDROID_LOG_DEBUG, "GDRNet", "bbox: x=%d, y=%d, width=%d, height=%d", bbox.x, bbox.y, bbox.width, bbox.height);
-    __android_log_print(ANDROID_LOG_DEBUG, "GDRNet", "ROI center: (%.2f, %.2f), scale: %.2f, resize_ratio: %.4f", cx, cy, scale, resize_ratio);
-    __android_log_print(ANDROID_LOG_DEBUG, "GDRNet", "Camera params: fx=%.2f, fy=%.2f, cx=%.2f, cy=%.2f", 
-        default_camera_params.fx, default_camera_params.fy, default_camera_params.cx, default_camera_params.cy);
-    __android_log_print(ANDROID_LOG_DEBUG, "GDRNet", "Object label: %d", resize_ratio);   
-
     ncnn::Extractor ex = gdrnet.create_extractor();
-
-    // 输入节点名与生成的 .param 文件完全对齐
     ex.input("in0", in0);
     ex.input("in1", in1);
     ex.input("in2", in2);
 
+
     ncnn::Mat out0, out1;
-    // out0 对应 [1, 6] 的 6D旋转，out1 对应 [1, 3] 的平移预测 (dx, dy, dz)
     int ret_r = ex.extract("out0", out0);
     int ret_t = ex.extract("out1", out1);
 
     if (ret_r != 0 || ret_t != 0) {
-        __android_log_print(ANDROID_LOG_ERROR, "GDRNet", "extract failed! ret_r: %d, ret_t: %d", ret_r, ret_t);
+        LOGE("extract by ID failed! ret_r: %d, ret_t: %d", ret_r, ret_t);
         return -1;
     }
 
-    // 打印out0和out1的原始输出值
-    __android_log_print(ANDROID_LOG_DEBUG, "GDRNet", "out0 shape: w=%d, h=%d, c=%d", out0.w, out0.h, out0.c);
-    __android_log_print(ANDROID_LOG_DEBUG, "GDRNet", "out1 shape: w=%d, h=%d, c=%d", out1.w, out1.h, out1.c);
-    
+    // ===============================
+    // 3. 后处理：手动接管数学解算 (完全对齐 Python)
+    // ===============================
+    // 获取底层数据指针
     float* out0_data = (float*)out0.data;
     float* out1_data = (float*)out1.data;
-    __android_log_print(ANDROID_LOG_DEBUG, "GDRNet", "out0: [%.4f, %.4f, %.4f, %.4f, %.4f, %.4f]",
-        out0_data[0], out0_data[1], out0_data[2], out0_data[3], out0_data[4], out0_data[5]);
-    __android_log_print(ANDROID_LOG_DEBUG, "GDRNet", "out1: [%.4f, %.4f, %.4f]",
-        out1_data[0], out1_data[1], out1_data[2]);
 
-    // ===============================
-    // 4. 后处理：手动接管数学解算 (关键脱敏步骤)
-    // ===============================
+    // 打印 6D 原始旋转向量
+    __android_log_print(ANDROID_LOG_DEBUG, "GDRNet_RAW",
+                        "Raw Rot (6D): [%.6f, %.6f, %.6f, %.6f, %.6f, %.6f]",
+                        out0_data[0], out0_data[1], out0_data[2],
+                        out0_data[3], out0_data[4], out0_data[5]);
 
-    // [A] 解算 3D 平移坐标 (严格对齐 Python 修正版的 decode_centroid_z)
-    float pred_dx = out1[0];
-    float pred_dy = out1[1];
-    float pred_z  = out1[2];
+    // 打印 3D 原始平移向量
+    __android_log_print(ANDROID_LOG_DEBUG, "GDRNet_RAW",
+                        "Raw Trans (dx, dy, dz): [%.6f, %.6f, %.6f]",
+                        out1_data[0], out1_data[1], out1_data[2]);
 
+    float pred_dx = out1_data[0];
+    float pred_dy = out1_data[1];
+    float pred_z  = out1_data[2];
 
-    // 2. 还原中心点偏移 (由于网络输出是在 256x256 下的，需要除以 ratio 还原)
+    // [A] 解算绝对平移 (Translation)
     float pixel_x = cx + pred_dx / resize_ratio;
     float pixel_y = cy + pred_dy / resize_ratio;
-
-    // 3. 还原绝对深度 (tz = dz * resize_ratio, 解决近大远小的透视问题)
     float tz = pred_z * resize_ratio;
 
-    // 4. 利用相机内参进行反投影，解算出世界坐标 X, Y, Z
     result.translation[0] = (pixel_x - default_camera_params.cx) * tz / default_camera_params.fx;
     result.translation[1] = (pixel_y - default_camera_params.cy) * tz / default_camera_params.fy;
     result.translation[2] = tz;
 
-    // [B] 6D 向量转 3x3 旋转矩阵 (包含 Allocentric 到 Egocentric 的转换)
-
-    // 1. 获取网络预测的原始 Allocentric 旋转基
+    // [B] 解算旋转矩阵 (严格对齐 demo.py)
     cv::Vec3f x_raw(out0[0], out0[1], out0[2]);
     cv::Vec3f y_raw(out0[3], out0[4], out0[5]);
 
-    cv::Vec3f x = cv::normalize(x_raw);
-    cv::Vec3f z_raw = x.cross(y_raw);
-    cv::Vec3f z = cv::normalize(z_raw);
-    cv::Vec3f y = z.cross(x);
+    // 1. 归一化 x
+    float norm_x = std::max((float)cv::norm(x_raw), 1e-8f);
+    cv::Vec3f x = x_raw / norm_x;
 
-    // 组合成原始的 R_allo 矩阵
-    cv::Matx33f R_allo(
-            x[0], y[0], z[0],
-            x[1], y[1], z[1],
-            x[2], y[2], z[2]
-    );
+    // 2. 减去投影算 y，并归一化
+    cv::Vec3f y_proj = y_raw - x * x.dot(y_raw);
+    float norm_y = std::max((float)cv::norm(y_proj), 1e-8f);
+    cv::Vec3f y = y_proj / norm_y;
 
-    // 2. 计算相机射线的旋转矩阵 R_ray
-    // 利用前面已经解算出来的绝对平移坐标 tx, ty, tz
-    float t_x = result.translation[0];
-    float t_y = result.translation[1];
-    float t_z = result.translation[2];
+    // 3. 叉乘算 z
+    cv::Vec3f z = x.cross(y);
 
-    float norm_t = std::sqrt(t_x * t_x + t_y * t_y + t_z * t_z);
-    float proj_xz = std::sqrt(t_x * t_x + t_z * t_z);
-
-    // 防止数学除 0 异常
-    float c_y = (proj_xz == 0.0f) ? 1.0f : (t_z / proj_xz);
-    float s_y = (proj_xz == 0.0f) ? 0.0f : (t_x / proj_xz);
-    float c_x = (norm_t == 0.0f) ? 1.0f : (proj_xz / norm_t);
-    float s_x = (norm_t == 0.0f) ? 0.0f : (-t_y / norm_t);
-
-    cv::Matx33f R_ray(
-            c_y,  s_y * s_x,  s_y * c_x,
-            0.0f,       c_x,       -s_x,
-            -s_y,  c_y * s_x,  c_y * c_x
-    );
-
-    // 3. 将其转换回以相机为绝对基准的 Egocentric 旋转
-    cv::Matx33f R_ego = R_ray * R_allo;
-
-    // 4. 将最终结果赋值给 PoseResult
-    result.rotation[0] = R_ego(0, 0); result.rotation[1] = R_ego(0, 1); result.rotation[2] = R_ego(0, 2);
-    result.rotation[3] = R_ego(1, 0); result.rotation[4] = R_ego(1, 1); result.rotation[5] = R_ego(1, 2);
-    result.rotation[6] = R_ego(2, 0); result.rotation[7] = R_ego(2, 1); result.rotation[8] = R_ego(2, 2);
-
-    // ===============================
-    // 5. 日志打印以供调试检查
-    // ===============================
-    __android_log_print(ANDROID_LOG_DEBUG, "GDRNet", "R: [%.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f]",
-                        result.rotation[0], result.rotation[1], result.rotation[2],
-                        result.rotation[3], result.rotation[4], result.rotation[5],
-                        result.rotation[6], result.rotation[7], result.rotation[8]);
-    __android_log_print(ANDROID_LOG_DEBUG, "GDRNet", "T: [%.2f, %.2f, %.2f]",
-                        result.translation[0], result.translation[1], result.translation[2]);
+    // 4. 直接赋值给 PoseResult
+    result.rotation[0] = x[0]; result.rotation[1] = y[0]; result.rotation[2] = z[0];
+    result.rotation[3] = x[1]; result.rotation[4] = y[1]; result.rotation[5] = z[1];
+    result.rotation[6] = x[2]; result.rotation[7] = y[2]; result.rotation[8] = z[2];
 
     return 0;
 }

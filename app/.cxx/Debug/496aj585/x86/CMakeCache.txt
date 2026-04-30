@@ -248,8 +248,8 @@ CMAKE_SYSTEM_VERSION:UNINITIALIZED=24
 //Path to a program.
 CMAKE_TAPI:FILEPATH=CMAKE_TAPI-NOTFOUND
 
-//The CMake toolchain file
-CMAKE_TOOLCHAIN_FILE:FILEPATH=E:/Android SDK/ndk/29.0.14206865/build/cmake/android.toolchain.cmake
+//No help, variable specified on the command line.
+CMAKE_TOOLCHAIN_FILE:UNINITIALIZED=E:\Android SDK\ndk\29.0.14206865\build\cmake\android.toolchain.cmake
 
 //If this value is on, makefiles will be generated without the
 // .SILENT directive, and all commands will be echoed to the console
@@ -279,7 +279,7 @@ yolo11ncnn_BINARY_DIR:STATIC=F:/graduationProject/ncnn-android-yolo11/app/.cxx/D
 yolo11ncnn_IS_TOP_LEVEL:STATIC=ON
 
 //Dependencies for the target
-yolo11ncnn_LIB_DEPENDS:STATIC=general;ncnn;general;opencv_core;general;opencv_imgproc;general;camera2ndk;general;mediandk;
+yolo11ncnn_LIB_DEPENDS:STATIC=general;ncnn;general;opencv_core;general;opencv_imgproc;
 
 //Value Computed by CMake
 yolo11ncnn_SOURCE_DIR:STATIC=F:/graduationProject/ncnn-android-yolo11/app/src/main/jni
