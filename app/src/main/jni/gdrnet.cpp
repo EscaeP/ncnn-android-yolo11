@@ -237,11 +237,11 @@ int GDRNet::inference(const cv::Mat& full_img, const cv::Rect& bbox, int object_
     result.translation[1] = (pixel_y - default_camera_params.cy) * tz / default_camera_params.fy;
     result.translation[2] = tz;
 
-    // [B] 解算旋转矩阵：直接生成 Egocentric 旋转矩阵
+// [B] 解算旋转矩阵 (Allocentric to Egocentric)
     cv::Vec3f x_raw(out0_data[0], out0_data[1], out0_data[2]);
     cv::Vec3f y_raw(out0_data[3], out0_data[4], out0_data[5]);
 
-    // 1. 施密特正交化 (Gram-Schmidt)
+    // 1. 施密特正交化，得到 R_allo (以物体为中心的旋转矩阵)
     float norm_x = std::max((float)cv::norm(x_raw), 1e-8f);
     cv::Vec3f x = x_raw / norm_x;
     cv::Vec3f y_proj = y_raw - x * x.dot(y_raw);
@@ -249,12 +249,59 @@ int GDRNet::inference(const cv::Mat& full_img, const cv::Rect& bbox, int object_
     cv::Vec3f y = y_proj / norm_y;
     cv::Vec3f z = x.cross(y);
 
-    // 2. 直接赋值 (放弃 R_ray 相机射线补偿，完全对齐 Python)
-    // 注意：x, y, z 是作为列向量 (Column vectors) 写入 3x3 矩阵的
-    result.rotation[0] = x[0]; result.rotation[1] = y[0]; result.rotation[2] = z[0];
-    result.rotation[3] = x[1]; result.rotation[4] = y[1]; result.rotation[5] = z[1];
-    result.rotation[6] = x[2]; result.rotation[7] = y[2]; result.rotation[8] = z[2];
+    cv::Mat R_allo = (cv::Mat_<float>(3, 3) <<
+                                            x[0], y[0], z[0],
+            x[1], y[1], z[1],
+            x[2], y[2], z[2]);
 
+    // 2. 🚀 相机射线补偿 (Ray Compensation) - 纯手工数学实现
+    cv::Vec3f t_vec(result.translation[0], result.translation[1], result.translation[2]);
+    float t_norm = std::max((float)cv::norm(t_vec), 1e-8f);
+    cv::Vec3f ray = t_vec / t_norm; // 相机看向物体的射线方向
+
+    // 计算 Z 轴 [0, 0, 1] 旋转到 ray 向量所需的旋转矩阵 R_ray
+    cv::Vec3f z_axis(0.0f, 0.0f, 1.0f);
+    cv::Vec3f axis = z_axis.cross(ray);
+
+    float sin_angle = cv::norm(axis); // 叉乘的模长等于 sin(theta)
+    float cos_angle = z_axis.dot(ray); // 点乘等于 cos(theta)
+
+    cv::Mat R_ray = cv::Mat::eye(3, 3, CV_32F);
+    if (sin_angle > 1e-6f) {
+        axis = axis / sin_angle; // 归一化旋转轴
+
+        float ux = axis[0], uy = axis[1], uz = axis[2];
+        float v = 1.0f - cos_angle;
+        float s = sin_angle;
+        float c = cos_angle;
+
+        // 手动展开罗德里格斯公式 (Rodrigues' rotation formula)
+        R_ray.at<float>(0, 0) = c + ux * ux * v;
+        R_ray.at<float>(0, 1) = ux * uy * v - uz * s;
+        R_ray.at<float>(0, 2) = ux * uz * v + uy * s;
+
+        R_ray.at<float>(1, 0) = uy * ux * v + uz * s;
+        R_ray.at<float>(1, 1) = c + uy * uy * v;
+        R_ray.at<float>(1, 2) = uy * uz * v - ux * s;
+
+        R_ray.at<float>(2, 0) = uz * ux * v - uy * s;
+        R_ray.at<float>(2, 1) = uz * uy * v + ux * s;
+        R_ray.at<float>(2, 2) = c + uz * uz * v;
+    }
+
+    // 3. 计算最终的 Egocentric 绝对旋转矩阵：R_ego = R_ray * R_allo
+    cv::Mat R_ego = R_ray * R_allo;
+
+    // 4. 将最终结果写入 result
+    result.rotation[0] = R_ego.at<float>(0, 0);
+    result.rotation[1] = R_ego.at<float>(0, 1);
+    result.rotation[2] = R_ego.at<float>(0, 2);
+    result.rotation[3] = R_ego.at<float>(1, 0);
+    result.rotation[4] = R_ego.at<float>(1, 1);
+    result.rotation[5] = R_ego.at<float>(1, 2);
+    result.rotation[6] = R_ego.at<float>(2, 0);
+    result.rotation[7] = R_ego.at<float>(2, 1);
+    result.rotation[8] = R_ego.at<float>(2, 2);
     return 0;
 }
 
