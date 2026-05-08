@@ -8,72 +8,37 @@
     <LinearLayout
         android:orientation="horizontal"
         android:layout_width="fill_parent"
-        android:layout_height="wrap_content">
-
-    <Button
-        android:id="@+id/buttonSwitchCamera"
-        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="切换摄像头" />
+        android:padding="10dp">
 
-    <Button
-        android:id="@+id/buttonPause"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="暂停/继续" />
+        <Button
+            android:id="@+id/buttonUploadImage"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="上传图片" 
+            android:layout_weight="1"/>
 
-    <Button
-        android:id="@+id/buttonUploadImage"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="上传图片" />
+        <Button
+            android:id="@+id/buttonBatchUpload"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="批量上传" 
+            android:layout_weight="1"/>
+
+        <Button
+            android:id="@+id/buttonSaveImage"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="保存图片" 
+            android:layout_weight="1"/>
 
     </LinearLayout>
 
-    <LinearLayout
-        android:orientation="horizontal"
+    <ImageView
+        android:id="@+id/imageViewResult"
         android:layout_width="fill_parent"
-        android:layout_height="wrap_content">
-
-    <Spinner
-        android:id="@+id/spinnerTask"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:drawSelectorOnTop="true"
-        android:entries="@array/task_array" />
-
-    <Spinner
-        android:id="@+id/spinnerModel"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:drawSelectorOnTop="true"
-        android:entries="@array/model_array" />
-
-    <Spinner
-        android:id="@+id/spinnerCPUGPU"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:drawSelectorOnTop="true"
-        android:entries="@array/cpugpu_array" />
-
-    </LinearLayout>
-
-    <FrameLayout
-        android:layout_width="fill_parent"
-        android:layout_height="fill_parent">
-
-        <SurfaceView
-            android:id="@+id/cameraview"
-            android:layout_width="fill_parent"
-            android:layout_height="fill_parent" />
-
-        <ImageView
-            android:id="@+id/imageViewResult"
-            android:layout_width="fill_parent"
-            android:layout_height="fill_parent"
-            android:visibility="gone"
-            android:scaleType="fitCenter" />
-
-    </FrameLayout>
+        android:layout_height="fill_parent"
+        android:visibility="gone"
+        android:scaleType="fitCenter" />
 
 </LinearLayout>

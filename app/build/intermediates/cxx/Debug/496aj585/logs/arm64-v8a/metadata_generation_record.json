@@ -14,7 +14,7 @@
   },
   {
     "level_": 0,
-    "message_": "JSON \u0027F:\\graduationProject\\ncnn-android-yolo11\\app\\.cxx\\Debug\\496aj585\\arm64-v8a\\android_gradle_build.json\u0027 was up-to-date",
+    "message_": "rebuilding JSON F:\\graduationProject\\ncnn-android-yolo11\\app\\.cxx\\Debug\\496aj585\\arm64-v8a\\android_gradle_build.json due to:",
     "file_": "F:\\graduationProject\\ncnn-android-yolo11\\app\\src\\main\\jni\\CMakeLists.txt",
     "tag_": "debug|arm64-v8a",
     "diagnosticCode_": 0,
@@ -27,7 +27,85 @@
   },
   {
     "level_": 0,
-    "message_": "JSON generation completed without problems",
+    "message_": "- a file changed",
+    "file_": "F:\\graduationProject\\ncnn-android-yolo11\\app\\src\\main\\jni\\CMakeLists.txt",
+    "tag_": "debug|arm64-v8a",
+    "diagnosticCode_": 0,
+    "memoizedIsInitialized": 1,
+    "unknownFields": {
+      "fields": {}
+    },
+    "memoizedSize": -1,
+    "memoizedHashCode": 0
+  },
+  {
+    "level_": 0,
+    "message_": "  - F:\\graduationProject\\ncnn-android-yolo11\\app\\src\\main\\jni\\CMakeLists.txt (LAST_MODIFIED_CHANGED)",
+    "file_": "F:\\graduationProject\\ncnn-android-yolo11\\app\\src\\main\\jni\\CMakeLists.txt",
+    "tag_": "debug|arm64-v8a",
+    "diagnosticCode_": 0,
+    "memoizedIsInitialized": 1,
+    "unknownFields": {
+      "fields": {}
+    },
+    "memoizedSize": -1,
+    "memoizedHashCode": 0
+  },
+  {
+    "level_": 0,
+    "message_": "keeping json folder \u0027F:\\graduationProject\\ncnn-android-yolo11\\app\\.cxx\\Debug\\496aj585\\arm64-v8a\u0027 but regenerating project",
+    "file_": "F:\\graduationProject\\ncnn-android-yolo11\\app\\src\\main\\jni\\CMakeLists.txt",
+    "tag_": "debug|arm64-v8a",
+    "diagnosticCode_": 0,
+    "memoizedIsInitialized": 1,
+    "unknownFields": {
+      "fields": {}
+    },
+    "memoizedSize": -1,
+    "memoizedHashCode": 0
+  },
+  {
+    "level_": 0,
+    "message_": "executing cmake @echo off\n\"E:\\\\Android SDK\\\\cmake\\\\3.31.5\\\\bin\\\\cmake.exe\" ^\n  \"-HF:\\\\graduationProject\\\\ncnn-android-yolo11\\\\app\\\\src\\\\main\\\\jni\" ^\n  \"-DCMAKE_SYSTEM_NAME\u003dAndroid\" ^\n  \"-DCMAKE_EXPORT_COMPILE_COMMANDS\u003dON\" ^\n  \"-DCMAKE_SYSTEM_VERSION\u003d24\" ^\n  \"-DANDROID_PLATFORM\u003dandroid-24\" ^\n  \"-DANDROID_ABI\u003darm64-v8a\" ^\n  \"-DCMAKE_ANDROID_ARCH_ABI\u003darm64-v8a\" ^\n  \"-DANDROID_NDK\u003dE:\\\\Android SDK\\\\ndk\\\\29.0.14206865\" ^\n  \"-DCMAKE_ANDROID_NDK\u003dE:\\\\Android SDK\\\\ndk\\\\29.0.14206865\" ^\n  \"-DCMAKE_TOOLCHAIN_FILE\u003dE:\\\\Android SDK\\\\ndk\\\\29.0.14206865\\\\build\\\\cmake\\\\android.toolchain.cmake\" ^\n  \"-DCMAKE_MAKE_PROGRAM\u003dE:\\\\Android SDK\\\\cmake\\\\3.31.5\\\\bin\\\\ninja.exe\" ^\n  \"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY\u003dF:\\\\graduationProject\\\\ncnn-android-yolo11\\\\app\\\\build\\\\intermediates\\\\cxx\\\\Debug\\\\496aj585\\\\obj\\\\arm64-v8a\" ^\n  \"-DCMAKE_RUNTIME_OUTPUT_DIRECTORY\u003dF:\\\\graduationProject\\\\ncnn-android-yolo11\\\\app\\\\build\\\\intermediates\\\\cxx\\\\Debug\\\\496aj585\\\\obj\\\\arm64-v8a\" ^\n  \"-DCMAKE_BUILD_TYPE\u003dDebug\" ^\n  \"-BF:\\\\graduationProject\\\\ncnn-android-yolo11\\\\app\\\\.cxx\\\\Debug\\\\496aj585\\\\arm64-v8a\" ^\n  -GNinja ^\n  \"-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES\u003dON\"\n",
+    "file_": "F:\\graduationProject\\ncnn-android-yolo11\\app\\src\\main\\jni\\CMakeLists.txt",
+    "tag_": "debug|arm64-v8a",
+    "diagnosticCode_": 0,
+    "memoizedIsInitialized": 1,
+    "unknownFields": {
+      "fields": {}
+    },
+    "memoizedSize": -1,
+    "memoizedHashCode": 0
+  },
+  {
+    "level_": 0,
+    "message_": "@echo off\n\"E:\\\\Android SDK\\\\cmake\\\\3.31.5\\\\bin\\\\cmake.exe\" ^\n  \"-HF:\\\\graduationProject\\\\ncnn-android-yolo11\\\\app\\\\src\\\\main\\\\jni\" ^\n  \"-DCMAKE_SYSTEM_NAME\u003dAndroid\" ^\n  \"-DCMAKE_EXPORT_COMPILE_COMMANDS\u003dON\" ^\n  \"-DCMAKE_SYSTEM_VERSION\u003d24\" ^\n  \"-DANDROID_PLATFORM\u003dandroid-24\" ^\n  \"-DANDROID_ABI\u003darm64-v8a\" ^\n  \"-DCMAKE_ANDROID_ARCH_ABI\u003darm64-v8a\" ^\n  \"-DANDROID_NDK\u003dE:\\\\Android SDK\\\\ndk\\\\29.0.14206865\" ^\n  \"-DCMAKE_ANDROID_NDK\u003dE:\\\\Android SDK\\\\ndk\\\\29.0.14206865\" ^\n  \"-DCMAKE_TOOLCHAIN_FILE\u003dE:\\\\Android SDK\\\\ndk\\\\29.0.14206865\\\\build\\\\cmake\\\\android.toolchain.cmake\" ^\n  \"-DCMAKE_MAKE_PROGRAM\u003dE:\\\\Android SDK\\\\cmake\\\\3.31.5\\\\bin\\\\ninja.exe\" ^\n  \"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY\u003dF:\\\\graduationProject\\\\ncnn-android-yolo11\\\\app\\\\build\\\\intermediates\\\\cxx\\\\Debug\\\\496aj585\\\\obj\\\\arm64-v8a\" ^\n  \"-DCMAKE_RUNTIME_OUTPUT_DIRECTORY\u003dF:\\\\graduationProject\\\\ncnn-android-yolo11\\\\app\\\\build\\\\intermediates\\\\cxx\\\\Debug\\\\496aj585\\\\obj\\\\arm64-v8a\" ^\n  \"-DCMAKE_BUILD_TYPE\u003dDebug\" ^\n  \"-BF:\\\\graduationProject\\\\ncnn-android-yolo11\\\\app\\\\.cxx\\\\Debug\\\\496aj585\\\\arm64-v8a\" ^\n  -GNinja ^\n  \"-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES\u003dON\"\n",
+    "file_": "F:\\graduationProject\\ncnn-android-yolo11\\app\\src\\main\\jni\\CMakeLists.txt",
+    "tag_": "debug|arm64-v8a",
+    "diagnosticCode_": 0,
+    "memoizedIsInitialized": 1,
+    "unknownFields": {
+      "fields": {}
+    },
+    "memoizedSize": -1,
+    "memoizedHashCode": 0
+  },
+  {
+    "level_": 0,
+    "message_": "Received process result: 1",
+    "file_": "F:\\graduationProject\\ncnn-android-yolo11\\app\\src\\main\\jni\\CMakeLists.txt",
+    "tag_": "debug|arm64-v8a",
+    "diagnosticCode_": 0,
+    "memoizedIsInitialized": 1,
+    "unknownFields": {
+      "fields": {}
+    },
+    "memoizedSize": -1,
+    "memoizedHashCode": 0
+  },
+  {
+    "level_": 0,
+    "message_": "JSON generation completed with problem. Exception: com.android.ide.common.process.ProcessException: -- Found OpenMP_C: -fopenmp\u003dlibomp (found version \"5.1\")\n-- Found OpenMP_CXX: -fopenmp\u003dlibomp (found version \"5.1\")\n-- Configuring incomplete, errors occurred!\n\nC++ build system [configure] failed while executing:\n    @echo off\n    \"E:\\\\Android SDK\\\\cmake\\\\3.31.5\\\\bin\\\\cmake.exe\" ^\n      \"-HF:\\\\graduationProject\\\\ncnn-android-yolo11\\\\app\\\\src\\\\main\\\\jni\" ^\n      \"-DCMAKE_SYSTEM_NAME\u003dAndroid\" ^\n      \"-DCMAKE_EXPORT_COMPILE_COMMANDS\u003dON\" ^\n      \"-DCMAKE_SYSTEM_VERSION\u003d24\" ^\n      \"-DANDROID_PLATFORM\u003dandroid-24\" ^\n      \"-DANDROID_ABI\u003darm64-v8a\" ^\n      \"-DCMAKE_ANDROID_ARCH_ABI\u003darm64-v8a\" ^\n      \"-DANDROID_NDK\u003dE:\\\\Android SDK\\\\ndk\\\\29.0.14206865\" ^\n      \"-DCMAKE_ANDROID_NDK\u003dE:\\\\Android SDK\\\\ndk\\\\29.0.14206865\" ^\n      \"-DCMAKE_TOOLCHAIN_FILE\u003dE:\\\\Android SDK\\\\ndk\\\\29.0.14206865\\\\build\\\\cmake\\\\android.toolchain.cmake\" ^\n      \"-DCMAKE_MAKE_PROGRAM\u003dE:\\\\Android SDK\\\\cmake\\\\3.31.5\\\\bin\\\\ninja.exe\" ^\n      \"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY\u003dF:\\\\graduationProject\\\\ncnn-android-yolo11\\\\app\\\\build\\\\intermediates\\\\cxx\\\\Debug\\\\496aj585\\\\obj\\\\arm64-v8a\" ^\n      \"-DCMAKE_RUNTIME_OUTPUT_DIRECTORY\u003dF:\\\\graduationProject\\\\ncnn-android-yolo11\\\\app\\\\build\\\\intermediates\\\\cxx\\\\Debug\\\\496aj585\\\\obj\\\\arm64-v8a\" ^\n      \"-DCMAKE_BUILD_TYPE\u003dDebug\" ^\n      \"-BF:\\\\graduationProject\\\\ncnn-android-yolo11\\\\app\\\\.cxx\\\\Debug\\\\496aj585\\\\arm64-v8a\" ^\n      -GNinja ^\n      \"-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES\u003dON\"\n  from F:\\graduationProject\\ncnn-android-yolo11\\app\nCMake Warning (dev) at CMakeLists.txt:1 (project):\n  cmake_minimum_required() should be called prior to this top-level project()\n  call.  Please see the cmake-commands(7) manual for usage documentation of\n  both commands.\nThis warning is for project developers.  Use -Wno-dev to suppress it.\n\nCMake Error at E:/Android SDK/cmake/3.31.5/share/cmake-3.31/Modules/FindPackageHandleStandardArgs.cmake:233 (message):\n  Could NOT find OpenCV (missing: imgcodecs) (found version \"4.13.0\")\nCall Stack (most recent call first):\n  E:/Android SDK/cmake/3.31.5/share/cmake-3.31/Modules/FindPackageHandleStandardArgs.cmake:603 (_FPHSA_FAILURE_MESSAGE)\n  opencv-mobile-4.13.0-android/sdk/native/jni/abi-arm64-v8a/OpenCVConfig.cmake:375 (find_package_handle_standard_args)\n  opencv-mobile-4.13.0-android/sdk/native/jni/OpenCVConfig.cmake:44 (include)\n  CMakeLists.txt:6 (find_package)",
     "file_": "F:\\graduationProject\\ncnn-android-yolo11\\app\\src\\main\\jni\\CMakeLists.txt",
     "tag_": "debug|arm64-v8a",
     "diagnosticCode_": 0,

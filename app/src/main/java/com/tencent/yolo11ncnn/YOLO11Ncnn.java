@@ -15,7 +15,12 @@
 package com.tencent.yolo11ncnn;
 
 import android.content.res.AssetManager;
+import android.graphics.Bitmap;
+import android.graphics.Bitmap.CompressFormat;
 import android.view.Surface;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 
 public class YOLO11Ncnn
 {
@@ -24,7 +29,27 @@ public class YOLO11Ncnn
     public native boolean closeCamera();
     public native boolean setOutputWindow(Surface surface);
     public native boolean togglePause();
-    public native android.graphics.Bitmap processImage(android.graphics.Bitmap bitmap, String imageName,String jsonContent);
+    public native Bitmap processImage(Bitmap bitmap, String imageName, String jsonContent);
+    public native String batchProcessImages(Bitmap[] bitmaps, String[] imageNames, String jsonContent);
+
+    public boolean saveImage(Bitmap bitmap, String savePath) {
+        if (bitmap == null || savePath == null) {
+            return false;
+        }
+        
+        File file = new File(savePath);
+        File parentDir = file.getParentFile();
+        if (parentDir != null && !parentDir.exists()) {
+            parentDir.mkdirs();
+        }
+        
+        try (FileOutputStream fos = new FileOutputStream(file)) {
+            return bitmap.compress(CompressFormat.JPEG, 90, fos);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
 
     static {
         System.loadLibrary("yolo11ncnn");

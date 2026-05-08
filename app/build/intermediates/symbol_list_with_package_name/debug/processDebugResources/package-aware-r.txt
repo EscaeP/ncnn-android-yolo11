@@ -2,13 +2,9 @@ com.tencent.yolo11ncnn
 array cpugpu_array
 array model_array
 array task_array
-id buttonPause
-id buttonSwitchCamera
+id buttonBatchUpload
+id buttonSaveImage
 id buttonUploadImage
-id cameraview
 id imageViewResult
-id spinnerCPUGPU
-id spinnerModel
-id spinnerTask
 layout main
 string app_name

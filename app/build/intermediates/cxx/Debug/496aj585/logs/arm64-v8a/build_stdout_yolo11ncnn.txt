@@ -1,2 +1,9 @@
 ninja: Entering directory `F:\graduationProject\ncnn-android-yolo11\app\.cxx\Debug\496aj585\arm64-v8a'
-ninja: no work to do.
+[1/2] Building CXX object CMakeFiles/yolo11ncnn.dir/yolo11ncnn.cpp.o
+FAILED: CMakeFiles/yolo11ncnn.dir/yolo11ncnn.cpp.o 
+"E:\Android SDK\ndk\29.0.14206865\toolchains\llvm\prebuilt\windows-x86_64\bin\clang++.exe" --target=aarch64-none-linux-android24 --sysroot="E:/Android SDK/ndk/29.0.14206865/toolchains/llvm/prebuilt/windows-x86_64/sysroot" -Dyolo11ncnn_EXPORTS -isystem F:/graduationProject/ncnn-android-yolo11/app/src/main/jni/ncnn-20260113-android-vulkan/arm64-v8a/include/ncnn -isystem F:/graduationProject/ncnn-android-yolo11/app/src/main/jni/opencv-mobile-4.13.0-android/sdk/native/jni/include -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -fno-limit-debug-info  -fPIC -fno-rtti -fno-exceptions -pthread -MD -MT CMakeFiles/yolo11ncnn.dir/yolo11ncnn.cpp.o -MF CMakeFiles\yolo11ncnn.dir\yolo11ncnn.cpp.o.d -o CMakeFiles/yolo11ncnn.dir/yolo11ncnn.cpp.o -c F:/graduationProject/ncnn-android-yolo11/app/src/main/jni/yolo11ncnn.cpp
+F:/graduationProject/ncnn-android-yolo11/app/src/main/jni/yolo11ncnn.cpp:703:24: error: no member named 'imwrite' in namespace 'cv'
+  703 |     bool success = cv::imwrite(path, bgr);
+      |                    ~~~~^
+1 error generated.
+ninja: build stopped: subcommand failed.

@@ -4,3 +4,12 @@ CMake Warning (dev) at CMakeLists.txt:1 (project):
   both commands.
 This warning is for project developers.  Use -Wno-dev to suppress it.
 
+CMake Error at E:/Android SDK/cmake/3.31.5/share/cmake-3.31/Modules/FindPackageHandleStandardArgs.cmake:233 (message):
+  Could NOT find OpenCV (missing: imgcodecs) (found version "4.13.0")
+Call Stack (most recent call first):
+  E:/Android SDK/cmake/3.31.5/share/cmake-3.31/Modules/FindPackageHandleStandardArgs.cmake:603 (_FPHSA_FAILURE_MESSAGE)
+  opencv-mobile-4.13.0-android/sdk/native/jni/abi-x86/OpenCVConfig.cmake:375 (find_package_handle_standard_args)
+  opencv-mobile-4.13.0-android/sdk/native/jni/OpenCVConfig.cmake:44 (include)
+  CMakeLists.txt:6 (find_package)
+
+

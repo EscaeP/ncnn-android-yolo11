@@ -1,17 +1,3 @@
-// Tencent is pleased to support the open source community by making ncnn available.
-//
-// Copyright (C) 2025 THL A29 Limited, a Tencent company. All rights reserved.
-//
-// Licensed under the BSD 3-Clause License (the "License"); you may not use this file except
-// in compliance with the License. You may obtain a copy of the License at
-//
-// https://opensource.org/licenses/BSD-3-Clause
-//
-// Unless required by applicable law or agreed to in writing, software distributed
-// under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-// CONDITIONS OF ANY KIND, either express or implied. See the License for the
-// specific language governing permissions and limitations under the License.
-
 package com.tencent.yolo11ncnn;
 
 import android.Manifest;
@@ -23,174 +9,103 @@ import android.provider.MediaStore;
 import android.provider.OpenableColumns;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
-import android.graphics.PixelFormat;
-import android.net.Uri;
 import android.os.Bundle;
-import android.provider.MediaStore;
+import android.os.Environment;
 import android.util.Log;
-import android.view.Surface;
-import android.view.SurfaceHolder;
-import android.view.SurfaceView;
 import android.view.View;
-import android.view.WindowManager;
-import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.ImageView;
-import android.widget.Spinner;
 import android.widget.Toast;
+import java.io.File;
 import java.io.InputStream;
 import java.io.IOException;
+import java.io.FileOutputStream;
+import java.io.OutputStreamWriter;
+import java.util.ArrayList;
+import java.util.List;
 import android.content.Context;
 
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 
-public class MainActivity extends Activity implements SurfaceHolder.Callback
-{
-    public static final int REQUEST_CAMERA = 100;
+public class MainActivity extends Activity {
     public static final int REQUEST_STORAGE = 101;
 
     private YOLO11Ncnn yolo11ncnn = new YOLO11Ncnn();
-    private int facing = 0;
 
-    private Spinner spinnerTask;
-    private Spinner spinnerModel;
-    private Spinner spinnerCPUGPU;
-    private int current_task = 0;
-    private int current_model = 0;
-    private int current_cpugpu = 0;
-    private boolean isShowingImage = false; // 标记是否正在显示图片
-
-    private SurfaceView cameraView;
     private ImageView imageViewResult;
+    private Bitmap currentResultBitmap;
 
-    /** Called when the activity is first created. */
+    private static final int REQUEST_MULTIPLE_IMAGES = 2;
+    private static final int REQUEST_WRITE_STORAGE = 102;
+
     @Override
-    public void onCreate(Bundle savedInstanceState)
-    {
+    public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
 
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-
-        cameraView = (SurfaceView) findViewById(R.id.cameraview);
-
-        cameraView.getHolder().setFormat(PixelFormat.RGBA_8888);
-        cameraView.getHolder().addCallback(this);
-
         imageViewResult = (ImageView) findViewById(R.id.imageViewResult);
-
-        Button buttonSwitchCamera = (Button) findViewById(R.id.buttonSwitchCamera);
-        buttonSwitchCamera.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View arg0) {
-                // 显示SurfaceView，隐藏ImageView
-                cameraView.setVisibility(View.VISIBLE);
-                imageViewResult.setVisibility(View.GONE);
-                isShowingImage = false; // 标记不在显示图片
-
-                int new_facing = 1 - facing;
-
-                yolo11ncnn.closeCamera();
-
-                yolo11ncnn.openCamera(new_facing);
-
-                facing = new_facing;
-            }
-        });
-
-        Button buttonPause = (Button) findViewById(R.id.buttonPause);
-        buttonPause.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View arg0) {
-                // 显示SurfaceView，隐藏ImageView
-                cameraView.setVisibility(View.VISIBLE);
-                imageViewResult.setVisibility(View.GONE);
-                isShowingImage = false; // 标记不在显示图片
-                yolo11ncnn.togglePause();
-            }
-        });
 
         Button buttonUploadImage = (Button) findViewById(R.id.buttonUploadImage);
         buttonUploadImage.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View arg0) {
-                // 关闭相机，准备处理图片
-                yolo11ncnn.closeCamera();
-                // 打开图片选择器
-                Intent intent = new Intent(Intent.ACTION_PICK, android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+                Intent intent = new Intent(Intent.ACTION_PICK, 
+                    android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
                 startActivityForResult(intent, 1);
             }
         });
 
-        spinnerTask = (Spinner) findViewById(R.id.spinnerTask);
-        spinnerTask.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+        Button buttonBatchUpload = (Button) findViewById(R.id.buttonBatchUpload);
+        buttonBatchUpload.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onItemSelected(AdapterView<?> arg0, View arg1, int position, long id)
-            {
-                if (position != current_task)
-                {
-                    current_task = position;
-                    reload();
+            public void onClick(View arg0) {
+                if (ContextCompat.checkSelfPermission(getApplicationContext(), 
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED) {
+                    ActivityCompat.requestPermissions(MainActivity.this, 
+                        new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, REQUEST_WRITE_STORAGE);
+                    return;
                 }
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> arg0)
-            {
+                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                intent.setType("image/*");
+                intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+                intent.addCategory(Intent.CATEGORY_OPENABLE);
+                startActivityForResult(intent, REQUEST_MULTIPLE_IMAGES);
             }
         });
 
-        spinnerModel = (Spinner) findViewById(R.id.spinnerModel);
-        spinnerModel.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+        Button buttonSaveImage = (Button) findViewById(R.id.buttonSaveImage);
+        buttonSaveImage.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onItemSelected(AdapterView<?> arg0, View arg1, int position, long id)
-            {
-                if (position != current_model)
-                {
-                    current_model = position;
-                    reload();
+            public void onClick(View arg0) {
+                if (currentResultBitmap == null) {
+                    Toast.makeText(MainActivity.this, "没有可保存的图片", Toast.LENGTH_SHORT).show();
+                    return;
                 }
-            }
 
-            @Override
-            public void onNothingSelected(AdapterView<?> arg0)
-            {
+                if (ContextCompat.checkSelfPermission(getApplicationContext(), 
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED) {
+                    ActivityCompat.requestPermissions(MainActivity.this, 
+                        new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, REQUEST_STORAGE);
+                    return;
+                }
+
+                String savePath = getExternalFilesDir(Environment.DIRECTORY_PICTURES) 
+                    + "/YOLO11Pose/result_" + System.currentTimeMillis() + ".jpg";
+                boolean success = yolo11ncnn.saveImage(currentResultBitmap, savePath);
+
+                if (success) {
+                    Toast.makeText(MainActivity.this, "图片保存成功!\n" + savePath, Toast.LENGTH_LONG).show();
+                    Log.d("MainActivity", "Image saved to: " + savePath);
+                } else {
+                    Toast.makeText(MainActivity.this, "保存失败", Toast.LENGTH_SHORT).show();
+                }
             }
         });
 
-        spinnerCPUGPU = (Spinner) findViewById(R.id.spinnerCPUGPU);
-        spinnerCPUGPU.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> arg0, View arg1, int position, long id)
-            {
-                if (position != current_cpugpu)
-                {
-                    current_cpugpu = position;
-                    reload();
-                }
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> arg0)
-            {
-            }
-        });
-
-        reload();
+        yolo11ncnn.loadModel(getAssets(), 0, 0, 0);
     }
 
-    private void reload()
-    {
-        Log.d("MainActivity", "Loading model: task=" + current_task + ", model=" + current_model + ", cpugpu=" + current_cpugpu);
-        boolean ret_init = yolo11ncnn.loadModel(getAssets(), current_task, current_model, current_cpugpu);
-        if (!ret_init)
-        {
-            Log.e("MainActivity", "yolo11ncnn loadModel failed");
-        } else {
-            Log.d("MainActivity", "Model loaded successfully");
-        }
-    }
     private String loadJSONFromAsset(Context context, String fileName) {
         String json = null;
         try {
@@ -206,100 +121,115 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback
         }
         return json;
     }
-    @Override
-    public void surfaceChanged(SurfaceHolder holder, int format, int width, int height)
-    {
-        yolo11ncnn.setOutputWindow(holder.getSurface());
-    }
-
-    @Override
-    public void surfaceCreated(SurfaceHolder holder)
-    {
-    }
-
-    @Override
-    public void surfaceDestroyed(SurfaceHolder holder)
-    {
-    }
-
-    @Override
-    public void onResume()
-    {
-        super.onResume();
-
-        if (ContextCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.CAMERA) == PackageManager.PERMISSION_DENIED)
-        {
-            ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.CAMERA}, REQUEST_CAMERA);
-        }
-
-        if (ContextCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED)
-        {
-            ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.READ_EXTERNAL_STORAGE}, REQUEST_STORAGE);
-        }
-
-        // 只有在不显示图片时才打开相机
-        if (!isShowingImage) {
-            yolo11ncnn.openCamera(facing);
-        }
-    }
-
-    @Override
-    public void onPause()
-    {
-        super.onPause();
-
-        yolo11ncnn.closeCamera();
-    }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+
         if (requestCode == 1 && resultCode == RESULT_OK && data != null) {
             Uri selectedImage = data.getData();
             try {
-                // 提取并打印照片名称
                 String imageName = getFileName(selectedImage);
                 Log.d("MainActivity", "Selected image: " + selectedImage);
                 Log.d("MainActivity", "Image name: " + imageName);
-                // 读取图片
+                
                 Bitmap bitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), selectedImage);
                 Log.d("MainActivity", "Bitmap loaded: " + bitmap.getWidth() + "x" + bitmap.getHeight());
-                // 处理图片
+                
                 String jsonString = loadJSONFromAsset(this, "testbbox.json");
-                Bitmap resultBitmap = yolo11ncnn.processImage(bitmap, imageName,jsonString);
-                Log.d("MainActivity", "Processed bitmap: " + (resultBitmap != null ? resultBitmap.getWidth() + "x" + resultBitmap.getHeight() : "null"));
-                // 显示处理后的图片
+                Bitmap resultBitmap = yolo11ncnn.processImage(bitmap, imageName, jsonString);
+                
+                Log.d("MainActivity", "Processed bitmap: " + (resultBitmap != null ? 
+                    resultBitmap.getWidth() + "x" + resultBitmap.getHeight() : "null"));
+
                 if (resultBitmap != null) {
-                    Log.d("MainActivity", "Showing result image");
-                    // 隐藏SurfaceView，显示ImageView
-                    cameraView.setVisibility(View.GONE);
                     imageViewResult.setImageBitmap(resultBitmap);
                     imageViewResult.setVisibility(View.VISIBLE);
-                    isShowingImage = true; // 标记正在显示图片
-                    Log.d("MainActivity", "ImageView visibility: " + imageViewResult.getVisibility() + ", isShowingImage: " + isShowingImage);
+                    currentResultBitmap = resultBitmap;
                 } else {
-                    Log.e("MainActivity", "Process image returned null");
-                    // 显示错误信息
                     Toast.makeText(this, "处理图片失败，请重试", Toast.LENGTH_SHORT).show();
-                    // 恢复相机预览
-                    cameraView.setVisibility(View.VISIBLE);
-                    imageViewResult.setVisibility(View.GONE);
-                    isShowingImage = false; // 标记不在显示图片
                 }
             } catch (Exception e) {
                 Log.e("MainActivity", "Error processing image", e);
-                e.printStackTrace();
-                // 显示错误信息
                 Toast.makeText(this, "处理图片失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                // 恢复相机预览
-                cameraView.setVisibility(View.VISIBLE);
-                imageViewResult.setVisibility(View.GONE);
-                isShowingImage = false; // 标记不在显示图片
+            }
+        } else if (requestCode == REQUEST_MULTIPLE_IMAGES && resultCode == RESULT_OK && data != null) {
+            try {
+                List<Bitmap> bitmapList = new ArrayList<>();
+                List<String> nameList = new ArrayList<>();
+
+                if (data.getClipData() != null) {
+                    int count = data.getClipData().getItemCount();
+                    Log.d("MainActivity", "Selected " + count + " images");
+
+                    for (int i = 0; i < count; i++) {
+                        Uri uri = data.getClipData().getItemAt(i).getUri();
+                        String name = getFileName(uri);
+                        Bitmap bitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), uri);
+                        bitmapList.add(bitmap);
+                        nameList.add(name);
+                    }
+                } else if (data.getData() != null) {
+                    Uri uri = data.getData();
+                    String name = getFileName(uri);
+                    Bitmap bitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), uri);
+                    bitmapList.add(bitmap);
+                    nameList.add(name);
+                }
+
+                if (bitmapList.isEmpty()) {
+                    Toast.makeText(this, "未选择任何图片", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                Bitmap[] bitmaps = bitmapList.toArray(new Bitmap[0]);
+                String[] names = nameList.toArray(new String[0]);
+                String jsonString = loadJSONFromAsset(this, "testbbox.json");
+
+                Log.d("MainActivity", "Starting batch processing...");
+                String resultJson = yolo11ncnn.batchProcessImages(bitmaps, names, jsonString);
+                Log.d("MainActivity", "Batch processing completed");
+
+                if (resultJson != null && !resultJson.isEmpty()) {
+                    String savePath = saveJsonToFile(resultJson, "pose_results.json");
+                    if (savePath != null) {
+                        Toast.makeText(this, "批量处理完成!\n结果已保存: " + savePath, Toast.LENGTH_LONG).show();
+                    } else {
+                        Toast.makeText(this, "处理完成，但保存失败", Toast.LENGTH_SHORT).show();
+                    }
+                } else {
+                    Toast.makeText(this, "批量处理失败", Toast.LENGTH_SHORT).show();
+                }
+
+            } catch (Exception e) {
+                Log.e("MainActivity", "Error in batch processing", e);
+                Toast.makeText(this, "批量处理失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
             }
         }
     }
-    
-    // 从Uri中提取文件名
+
+    private String saveJsonToFile(String jsonContent, String fileName) {
+        try {
+            File dir = new File(getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS), "YOLO11Pose");
+            if (!dir.exists()) {
+                dir.mkdirs();
+            }
+
+            File file = new File(dir, fileName);
+            FileOutputStream fos = new FileOutputStream(file);
+            OutputStreamWriter writer = new OutputStreamWriter(fos, "UTF-8");
+            writer.write(jsonContent);
+            writer.close();
+            fos.close();
+
+            Log.d("MainActivity", "JSON saved to: " + file.getAbsolutePath());
+            return file.getAbsolutePath();
+        } catch (IOException e) {
+            Log.e("MainActivity", "Error saving JSON file", e);
+            return null;
+        }
+    }
+
     private String getFileName(Uri uri) {
         String result = null;
         if (uri.getScheme().equals("content")) {
